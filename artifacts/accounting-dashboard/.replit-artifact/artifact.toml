@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Accounting Deadline Manager"
+version = "1.0.0"
+id = "artifacts/accounting-dashboard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24880
+
+[services.development]
+run = "pnpm --filter @workspace/accounting-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/accounting-dashboard", "run", "build" ]
+publicDir = "artifacts/accounting-dashboard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24880"
+BASE_PATH = "/"

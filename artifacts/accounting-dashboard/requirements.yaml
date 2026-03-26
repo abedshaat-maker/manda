@@ -1,0 +1,20 @@
+packages:
+  "date-fns": "For formatting and calculating days left for deadlines"
+  "xlsx": "For exporting client data to Excel"
+  "framer-motion": "For smooth layout animations and dashboard card entry effects"
+  "@hookform/resolvers": "For Zod form validation"
+  "react-hook-form": "For complex form state management"
+  "lucide-react": "For beautiful consistent icons"
+
+images:
+  - path: "artifacts/accounting-dashboard/public/images/auth-bg.png"
+    description: "Abstract premium corporate background in navy blue with subtle red geometric light accents, soft gradients, modern enterprise aesthetic"
+    aspect_ratio: "16:9"
+  - path: "artifacts/accounting-dashboard/public/images/empty-state.png"
+    description: "Clean minimalist 3D illustration of a neat desk with a calendar and floating checkmarks, navy and red accents on white"
+    aspect_ratio: "1:1"
+
+notes:
+  - Backend proxy for Companies House uses /api/company/:number
+  - Add client form handles multiple deadline creations if lookup returns several dates
+  - Export to excel relies on frontend xlsx library processing data from /api/clients/export

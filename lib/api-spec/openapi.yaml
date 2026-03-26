@@ -1,22 +1,24 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Accounting Deadline Manager API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: clients
+    description: Client deadline management
+  - name: companies-house
+    description: Companies House proxy
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +26,191 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /company/{number}:
+    get:
+      operationId: lookupCompany
+      tags: [companies-house]
+      summary: Lookup a company by number from Companies House
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Company details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyLookupResult"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List all clients
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Add a new client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+      responses:
+        "201":
+          description: Client created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get a client by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    put:
+      operationId: updateClient
+      tags: [clients]
+      summary: Update a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClientRequest"
+      responses:
+        "200":
+          description: Updated client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    delete:
+      operationId: deleteClient
+      tags: [clients]
+      summary: Delete a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /clients/{id}/complete:
+    post:
+      operationId: markClientComplete
+      tags: [clients]
+      summary: Mark a client deadline as completed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}/email-preview:
+    get:
+      operationId: getEmailPreview
+      tags: [clients]
+      summary: Get email reminder preview for a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Email preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailPreview"
+
+  /clients/export:
+    get:
+      operationId: exportClients
+      tags: [clients]
+      summary: Export clients data as JSON (frontend handles Excel conversion)
+      responses:
+        "200":
+          description: Export data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClientExportRow"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [clients]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +221,190 @@ components:
       required:
         - status
 
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    CompanyLookupResult:
+      type: object
+      properties:
+        companyNumber:
+          type: string
+        companyName:
+          type: string
+        companyStatus:
+          type: string
+        incorporatedOn:
+          type: string
+        accountsDueDate:
+          type: string
+          nullable: true
+        confirmationStatementDueDate:
+          type: string
+          nullable: true
+        vatReturnDueDate:
+          type: string
+          nullable: true
+        selfAssessmentDueDate:
+          type: string
+          nullable: true
+      required:
+        - companyNumber
+        - companyName
+        - companyStatus
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+        clientName:
+          type: string
+        companyNumber:
+          type: string
+        companyName:
+          type: string
+        deadlineType:
+          type: string
+        dueDate:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, overdue]
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - clientName
+        - companyNumber
+        - companyName
+        - deadlineType
+        - dueDate
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateClientRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+        companyNumber:
+          type: string
+        companyName:
+          type: string
+        deadlineType:
+          type: string
+        dueDate:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, overdue]
+        notes:
+          type: string
+          nullable: true
+      required:
+        - clientName
+        - companyNumber
+        - companyName
+        - deadlineType
+        - dueDate
+        - status
+
+    UpdateClientRequest:
+      type: object
+      properties:
+        clientName:
+          type: string
+        companyNumber:
+          type: string
+        companyName:
+          type: string
+        deadlineType:
+          type: string
+        dueDate:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, overdue]
+        notes:
+          type: string
+          nullable: true
+
+    EmailPreview:
+      type: object
+      properties:
+        subject:
+          type: string
+        body:
+          type: string
+        clientName:
+          type: string
+        dueDate:
+          type: string
+        deadlineType:
+          type: string
+      required:
+        - subject
+        - body
+        - clientName
+        - dueDate
+        - deadlineType
+
+    ClientExportRow:
+      type: object
+      properties:
+        clientName:
+          type: string
+        companyNumber:
+          type: string
+        companyName:
+          type: string
+        deadlineType:
+          type: string
+        dueDate:
+          type: string
+        daysLeft:
+          type: number
+        status:
+          type: string
+        notes:
+          type: string
+          nullable: true
+      required:
+        - clientName
+        - companyNumber
+        - companyName
+        - deadlineType
+        - dueDate
+        - daysLeft
+        - status
+
+    DashboardStats:
+      type: object
+      properties:
+        total:
+          type: number
+        overdue:
+          type: number
+        dueSoon:
+          type: number
+        upcoming:
+          type: number
+        completed:
+          type: number
+      required:
+        - total
+        - overdue
+        - dueSoon
+        - upcoming
+        - completed

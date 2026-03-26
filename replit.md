@@ -4,6 +4,15 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
+## Applications
+
+### Accounting Deadline Manager
+- **Frontend**: `artifacts/accounting-dashboard` — React + Vite, navy/red theme, served at `/`
+- **Backend**: `artifacts/api-server` — Express 5, served at `/api`
+- **Data storage**: JSON file at `artifacts/api-server/data/clients.json`
+- **Companies House proxy**: `GET /api/company/:number` — proxies to `api.company-information.service.gov.uk` using `CH_API_KEY` secret with Basic Auth
+- **Key routes**: `/api/clients`, `/api/stats`, `/api/clients/export`, `/api/clients/:id/email-preview`, `/api/clients/:id/complete`
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

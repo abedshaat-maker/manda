@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "postgresql-16"]
 
 [[artifacts]]
 id = "artifacts/api-server"
@@ -31,3 +31,6 @@ timeoutMs = 20000
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = "587"
 SMTP_PASS = "kltaowvbhzilolko"
+
+[nix]
+channel = "stable-25_05"

@@ -1,5 +1,6 @@
 import { LayoutDashboard, Users, Settings, PieChart, Building } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
 
 const links = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -9,8 +10,37 @@ const links = [
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+}
+
 export function Sidebar() {
   const [location] = useLocation();
+  const [firmName, setFirmName] = useState("ADM Pro");
+  const [accountantName, setAccountantName] = useState("");
+
+  useEffect(() => {
+    const load = () => {
+      const fn = localStorage.getItem("firm_name");
+      const an = localStorage.getItem("accountant_name");
+      if (fn) setFirmName(fn);
+      if (an) setAccountantName(an);
+    };
+    load();
+    window.addEventListener("storage", load);
+    const interval = setInterval(load, 1000);
+    return () => {
+      window.removeEventListener("storage", load);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const initials = accountantName ? getInitials(accountantName) : firmName ? getInitials(firmName) : "?";
 
   return (
     <div className="w-64 bg-sidebar flex-shrink-0 hidden lg:flex flex-col shadow-xl z-10">
@@ -19,7 +49,7 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center shadow-lg shadow-accent/20">
             <LayoutDashboard className="w-4 h-4 text-white" />
           </div>
-          ADM Pro
+          <span className="truncate">{firmName}</span>
         </div>
       </div>
 
@@ -46,11 +76,13 @@ export function Sidebar() {
       <div className="p-4 m-4 bg-white/5 rounded-xl border border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-primary border-2 border-white/20 flex items-center justify-center text-sm font-bold text-white shadow-inner">
-            JD
+            {initials}
           </div>
-          <div>
-            <p className="text-sm font-medium text-sidebar-foreground">John Doe</p>
-            <p className="text-xs text-sidebar-foreground/50">Senior Partner</p>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
+              {accountantName || firmName || "Your Firm"}
+            </p>
+            <p className="text-xs text-sidebar-foreground/50">Accountant</p>
           </div>
         </div>
       </div>

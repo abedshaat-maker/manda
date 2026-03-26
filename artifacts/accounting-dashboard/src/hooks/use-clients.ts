@@ -66,5 +66,20 @@ export function useClientMutations() {
     },
   });
 
-  return { create, update, remove, markComplete };
+  const revertPending = (id: string) => {
+    update.mutate(
+      { id, data: { status: "pending" } },
+      {
+        onSuccess: () => {
+          invalidate();
+          toast({ title: "Reverted", description: "Deadline moved back to pending." });
+        },
+        onError: (err: any) => {
+          toast({ title: "Error", description: err.message || "Failed to revert.", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  return { create, update, remove, markComplete, revertPending };
 }

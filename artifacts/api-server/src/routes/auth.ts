@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import pg from "pg";
 
 const { Pool } = pg;
@@ -7,6 +8,9 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes("localhost") ? false : { rejectUnauthorized: false },
 });
+
+const JWT_SECRET = process.env.JWT_SECRET || "adm-pro-jwt-secret-change-me-in-production";
+const JWT_EXPIRES_IN = "7d";
 
 const router: IRouter = Router();
 
@@ -24,10 +28,16 @@ async function ensureDefaultUser() {
 ensureDefaultUser().catch(console.error);
 
 router.get("/auth/me", (req, res) => {
-  const session = req.session as any;
-  if (session?.userId) {
-    res.json({ loggedIn: true, username: session.username });
-  } else {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    res.json({ loggedIn: false });
+    return;
+  }
+  try {
+    const token = authHeader.slice(7);
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
+    res.json({ loggedIn: true, username: payload.username });
+  } catch {
     res.json({ loggedIn: false });
   }
 });
@@ -58,26 +68,35 @@ router.post("/auth/login", async (req, res) => {
       return;
     }
 
-    const session = req.session as any;
-    session.userId = user.id;
-    session.username = user.username;
-    res.json({ loggedIn: true, username: user.username });
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({ loggedIn: true, username: user.username, token });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Login failed" });
   }
 });
 
-router.post("/auth/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.json({ loggedIn: false });
-  });
+router.post("/auth/logout", (_req, res) => {
+  res.json({ loggedIn: false });
 });
 
 router.post("/auth/change-password", async (req, res) => {
-  const session = req.session as any;
-  if (!session?.userId) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  let payload: { userId: string; username: string };
+  try {
+    payload = jwt.verify(authHeader.slice(7), JWT_SECRET) as any;
+  } catch {
+    res.status(401).json({ error: "Invalid or expired token" });
     return;
   }
 
@@ -94,7 +113,7 @@ router.post("/auth/change-password", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT password_hash FROM users WHERE id = $1`,
-      [session.userId]
+      [payload.userId]
     );
     if (rows.length === 0) { res.status(404).json({ error: "User not found" }); return; }
 
@@ -102,7 +121,7 @@ router.post("/auth/change-password", async (req, res) => {
     if (!valid) { res.status(401).json({ error: "Current password is incorrect" }); return; }
 
     const newHash = await bcrypt.hash(newPassword, 10);
-    await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [newHash, session.userId]);
+    await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [newHash, payload.userId]);
     res.json({ success: true });
   } catch (err) {
     console.error("Change password error:", err);

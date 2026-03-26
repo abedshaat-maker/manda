@@ -35,6 +35,7 @@ export const ClientStatus = {
 export interface Client {
   id: string;
   clientName: string;
+  clientEmail?: string | null;
   companyNumber: string;
   companyName: string;
   deadlineType: string;
@@ -56,6 +57,7 @@ export const CreateClientRequestStatus = {
 
 export interface CreateClientRequest {
   clientName: string;
+  clientEmail?: string | null;
   companyNumber: string;
   companyName: string;
   deadlineType: string;
@@ -87,6 +89,7 @@ export interface EmailPreview {
   subject: string;
   body: string;
   clientName: string;
+  clientEmail?: string | null;
   dueDate: string;
   deadlineType: string;
 }

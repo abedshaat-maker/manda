@@ -38,6 +38,7 @@ export const LookupCompanyResponse = zod.object({
 export const ListClientsResponseItem = zod.object({
   id: zod.string(),
   clientName: zod.string(),
+  clientEmail: zod.string().nullish(),
   companyNumber: zod.string(),
   companyName: zod.string(),
   deadlineType: zod.string(),
@@ -54,6 +55,7 @@ export const ListClientsResponse = zod.array(ListClientsResponseItem);
  */
 export const CreateClientBody = zod.object({
   clientName: zod.string(),
+  clientEmail: zod.string().nullish(),
   companyNumber: zod.string(),
   companyName: zod.string(),
   deadlineType: zod.string(),
@@ -72,6 +74,7 @@ export const GetClientParams = zod.object({
 export const GetClientResponse = zod.object({
   id: zod.string(),
   clientName: zod.string(),
+  clientEmail: zod.string().nullish(),
   companyNumber: zod.string(),
   companyName: zod.string(),
   deadlineType: zod.string(),
@@ -91,6 +94,7 @@ export const UpdateClientParams = zod.object({
 
 export const UpdateClientBody = zod.object({
   clientName: zod.string().optional(),
+  clientEmail: zod.string().nullish(),
   companyNumber: zod.string().optional(),
   companyName: zod.string().optional(),
   deadlineType: zod.string().optional(),
@@ -102,6 +106,7 @@ export const UpdateClientBody = zod.object({
 export const UpdateClientResponse = zod.object({
   id: zod.string(),
   clientName: zod.string(),
+  clientEmail: zod.string().nullish(),
   companyNumber: zod.string(),
   companyName: zod.string(),
   deadlineType: zod.string(),
@@ -129,6 +134,7 @@ export const MarkClientCompleteParams = zod.object({
 export const MarkClientCompleteResponse = zod.object({
   id: zod.string(),
   clientName: zod.string(),
+  clientEmail: zod.string().nullish(),
   companyNumber: zod.string(),
   companyName: zod.string(),
   deadlineType: zod.string(),
@@ -150,6 +156,7 @@ export const GetEmailPreviewResponse = zod.object({
   subject: zod.string(),
   body: zod.string(),
   clientName: zod.string(),
+  clientEmail: zod.string().nullish(),
   dueDate: zod.string(),
   deadlineType: zod.string(),
 });

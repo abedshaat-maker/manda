@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail, Copy, Check, Send, Loader2 } from "lucide-react";
 import { useGetEmailPreview } from "@workspace/api-client-react";
 import {
@@ -24,13 +24,14 @@ export function EmailPreviewDialog({ clientId, onClose }: EmailPreviewDialogProp
   const { toast } = useToast();
 
   const { data: preview, isLoading } = useGetEmailPreview(clientId || "", {
-    query: {
-      enabled: !!clientId,
-      onSuccess: (data: any) => {
-        if (data?.clientEmail) setToEmail(data.clientEmail);
-      },
-    }
+    query: { enabled: !!clientId }
   });
+
+  useEffect(() => {
+    if (preview?.clientEmail) {
+      setToEmail(preview.clientEmail);
+    }
+  }, [preview?.clientEmail]);
 
   const handleCopy = () => {
     if (!preview) return;
@@ -54,8 +55,9 @@ export function EmailPreviewDialog({ clientId, onClose }: EmailPreviewDialogProp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to: toEmail, subject: preview.subject, body: preview.body }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to send");
+      let json: any = {};
+      try { json = await res.json(); } catch { /* non-JSON response */ }
+      if (!res.ok) throw new Error(json.error || `Server error ${res.status}`);
       toast({ title: "Email sent!", description: `Reminder sent to ${toEmail}` });
       onClose();
     } catch (err: any) {

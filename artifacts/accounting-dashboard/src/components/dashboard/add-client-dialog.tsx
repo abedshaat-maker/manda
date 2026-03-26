@@ -53,6 +53,7 @@ export function AddClientDialog() {
       companyNumber: "",
       companyName: "",
       clientName: "",
+      clientEmail: "",
       notes: "",
     },
   });
@@ -118,6 +119,7 @@ export function AddClientDialog() {
           create.mutateAsync({
             data: {
               clientName: values.clientName || values.companyName,
+              clientEmail: values.clientEmail || null,
               companyNumber: values.companyNumber || "N/A",
               companyName: values.companyName || "N/A",
               deadlineType: deadline.type,
@@ -211,6 +213,19 @@ export function AddClientDialog() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="clientEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-foreground/80">Client Email (for reminders)</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="client@example.com" className="bg-background rounded-xl" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">

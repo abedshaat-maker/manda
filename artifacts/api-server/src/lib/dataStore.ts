@@ -12,6 +12,7 @@ const DATA_FILE = join(DATA_DIR, "clients.json");
 export interface Client {
   id: string;
   clientName: string;
+  clientEmail: string | null;
   companyNumber: string;
   companyName: string;
   deadlineType: string;

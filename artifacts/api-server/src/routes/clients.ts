@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import nodemailer from "nodemailer";
 import {
   loadClients,
   createClient,
@@ -12,11 +13,24 @@ import {
 
 const router: IRouter = Router();
 
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
 router.get("/clients/export", (_req, res) => {
   autoUpdateStatuses();
   const clients = loadClients();
   const rows = clients.map((c) => ({
     clientName: c.clientName,
+    clientEmail: c.clientEmail ?? null,
     companyNumber: c.companyNumber,
     companyName: c.companyName,
     deadlineType: c.deadlineType,
@@ -72,6 +86,7 @@ router.get("/clients", (_req, res) => {
 router.post("/clients", (req, res) => {
   const body = req.body as {
     clientName: string;
+    clientEmail?: string | null;
     companyNumber: string;
     companyName: string;
     deadlineType: string;
@@ -87,6 +102,7 @@ router.post("/clients", (req, res) => {
 
   const client = createClient({
     clientName: body.clientName,
+    clientEmail: body.clientEmail ?? null,
     companyNumber: body.companyNumber,
     companyName: body.companyName,
     deadlineType: body.deadlineType,
@@ -186,9 +202,44 @@ Your Accounting Team`;
     subject,
     body,
     clientName: client.clientName,
+    clientEmail: client.clientEmail ?? null,
     dueDate: client.dueDate,
     deadlineType: client.deadlineType,
   });
+});
+
+router.post("/clients/:id/send-email", async (req, res) => {
+  const client = getClientById(req.params.id);
+  if (!client) {
+    res.status(404).json({ error: "Client not found" });
+    return;
+  }
+
+  const { to, subject, body } = req.body as { to: string; subject: string; body: string };
+
+  if (!to || !subject || !body) {
+    res.status(400).json({ error: "Missing to, subject, or body" });
+    return;
+  }
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    res.status(500).json({ error: "Email credentials not configured on server." });
+    return;
+  }
+
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || "Accounting Team"}" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      text: body,
+    });
+    res.json({ success: true, message: `Email sent to ${to}` });
+  } catch (err: any) {
+    console.error("Email send error:", err);
+    res.status(500).json({ error: err.message || "Failed to send email" });
+  }
 });
 
 export default router;

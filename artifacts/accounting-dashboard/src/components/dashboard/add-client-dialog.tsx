@@ -87,8 +87,15 @@ export function AddClientDialog() {
       
       setDeadlines(newDeadlines);
       toast({ title: "Success", description: "Company details found." });
-    } catch (error) {
-      toast({ title: "Not Found", description: "Could not find company with that number.", variant: "destructive" });
+    } catch (error: any) {
+      const status = error?.status;
+      if (status === 401) {
+        toast({ title: "Session expired", description: "Please refresh the page and log in again.", variant: "destructive" });
+      } else if (status === 404) {
+        toast({ title: "Not Found", description: "Could not find a company with that number on Companies House.", variant: "destructive" });
+      } else {
+        toast({ title: "Lookup failed", description: error?.message || "Could not look up company. Please try again.", variant: "destructive" });
+      }
     } finally {
       setIsLookingUp(false);
     }

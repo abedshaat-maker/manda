@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Mail, Copy, Check, Send, Loader2 } from "lucide-react";
-import { useGetEmailPreview } from "@workspace/api-client-react";
+import { useGetEmailPreview, customFetch } from "@workspace/api-client-react";
 import {
   Dialog,
   DialogContent,
@@ -50,14 +50,11 @@ export function EmailPreviewDialog({ clientId, onClose }: EmailPreviewDialogProp
 
     setSending(true);
     try {
-      const res = await fetch(`/api/clients/${clientId}/send-email`, {
+      await customFetch(`/api/clients/${clientId}/send-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ to: toEmail, subject: preview.subject, body: preview.body }),
       });
-      let json: any = {};
-      try { json = await res.json(); } catch { /* non-JSON response */ }
-      if (!res.ok) throw new Error(json.error || `Server error ${res.status}`);
       toast({ title: "Email sent!", description: `Reminder sent to ${toEmail}` });
       onClose();
     } catch (err: any) {

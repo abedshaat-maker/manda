@@ -1,13 +1,16 @@
 import { LayoutDashboard, Users, Settings, PieChart, Building } from "lucide-react";
+import { Link, useLocation } from "wouter";
+
+const links = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+  { icon: Users, label: "Clients", href: "/clients" },
+  { icon: Building, label: "Companies", href: "/companies" },
+  { icon: PieChart, label: "Reports", href: "/reports" },
+  { icon: Settings, label: "Settings", href: "/settings" },
+];
 
 export function Sidebar() {
-  const links = [
-    { icon: LayoutDashboard, label: "Dashboard", active: true },
-    { icon: Users, label: "Clients", active: false },
-    { icon: Building, label: "Companies", active: false },
-    { icon: PieChart, label: "Reports", active: false },
-    { icon: Settings, label: "Settings", active: false },
-  ];
+  const [location] = useLocation();
 
   return (
     <div className="w-64 bg-sidebar flex-shrink-0 hidden lg:flex flex-col shadow-xl z-10">
@@ -19,23 +22,25 @@ export function Sidebar() {
           ADM Pro
         </div>
       </div>
-      
+
       <nav className="flex-1 px-4 space-y-1 mt-4">
-        {links.map((link) => (
-          <a
-            key={link.label}
-            href="#"
-            onClick={(e) => e.preventDefault()}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-              link.active 
-                ? "bg-white/10 text-sidebar-foreground font-medium shadow-sm" 
-                : "text-sidebar-foreground/60 hover:bg-white/5 hover:text-sidebar-foreground"
-            }`}
-          >
-            <link.icon className={`w-5 h-5 ${link.active ? "text-accent" : ""}`} />
-            {link.label}
-          </a>
-        ))}
+        {links.map((link) => {
+          const active = location === link.href || (link.href !== "/" && location.startsWith(link.href));
+          return (
+            <Link
+              key={link.label}
+              href={link.href}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer ${
+                active
+                  ? "bg-white/10 text-sidebar-foreground font-medium shadow-sm"
+                  : "text-sidebar-foreground/60 hover:bg-white/5 hover:text-sidebar-foreground"
+              }`}
+            >
+              <link.icon className={`w-5 h-5 ${active ? "text-accent" : ""}`} />
+              {link.label}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="p-4 m-4 bg-white/5 rounded-xl border border-white/10">

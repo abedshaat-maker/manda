@@ -1,6 +1,8 @@
-import { LayoutDashboard, Users, Settings, PieChart, Building } from "lucide-react";
+import { LayoutDashboard, Users, Settings, PieChart, Building, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const links = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -23,6 +25,7 @@ export function Sidebar() {
   const [location] = useLocation();
   const [firmName, setFirmName] = useState("ADM Pro");
   const [accountantName, setAccountantName] = useState("");
+  const { logout, username } = useAuth();
 
   useEffect(() => {
     const load = () => {
@@ -40,7 +43,8 @@ export function Sidebar() {
     };
   }, []);
 
-  const initials = accountantName ? getInitials(accountantName) : firmName ? getInitials(firmName) : "?";
+  const displayName = accountantName || firmName || "Your Firm";
+  const initials = displayName ? getInitials(displayName) : "?";
 
   return (
     <div className="w-64 bg-sidebar flex-shrink-0 hidden lg:flex flex-col shadow-xl z-10">
@@ -75,15 +79,24 @@ export function Sidebar() {
 
       <div className="p-4 m-4 bg-white/5 rounded-xl border border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-primary border-2 border-white/20 flex items-center justify-center text-sm font-bold text-white shadow-inner">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-primary border-2 border-white/20 flex items-center justify-center text-sm font-bold text-white shadow-inner flex-shrink-0">
             {initials}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {accountantName || firmName || "Your Firm"}
-            </p>
-            <p className="text-xs text-sidebar-foreground/50">Accountant</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</p>
+            <p className="text-xs text-sidebar-foreground/50">{username || "Accountant"}</p>
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={logout}
+                className="text-sidebar-foreground/40 hover:text-sidebar-foreground/80 transition-colors flex-shrink-0 p-1 rounded-lg hover:bg-white/10"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Sign out</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>

@@ -30,3 +30,4 @@ timeoutMs = 20000
 [userenv.shared]
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = "587"
+SMTP_PASS = "kltaowvbhzilolko"

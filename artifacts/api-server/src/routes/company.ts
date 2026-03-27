@@ -1,4 +1,24 @@
 import { Router, type IRouter } from "express";
+import pg from "pg";
+
+const { Pool } = pg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes("localhost") ? false : { rejectUnauthorized: false },
+});
+
+// Ensure directors table exists
+pool.query(`
+  CREATE TABLE IF NOT EXISTS directors (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_number VARCHAR NOT NULL,
+    name VARCHAR NOT NULL,
+    phone VARCHAR,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(company_number, name)
+  )
+`).catch(console.error);
 
 const router: IRouter = Router();
 
@@ -21,10 +41,28 @@ function addMonths(dateStr: string, months: number): string {
   return d.toISOString().split("T")[0];
 }
 
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
+async function fetchDirectorsFromCH(number: string, auth: string) {
+  const res = await fetch(
+    `${CH_BASE}/company/${number}/officers?items_per_page=50`,
+    { headers: { Authorization: `Basic ${auth}` } }
+  );
+  if (!res.ok) return [];
+  const data = (await res.json()) as {
+    items?: Array<{
+      name: string;
+      officer_role: string;
+      resigned_on?: string;
+      appointed_on?: string;
+    }>;
+  };
+  return (data.items ?? [])
+    .filter(
+      (o) =>
+        (o.officer_role === "director" || o.officer_role === "corporate-director") &&
+        !o.resigned_on
+    )
+    .slice(0, 5)
+    .map((o) => ({ name: o.name, appointedOn: o.appointed_on ?? null }));
 }
 
 router.get("/company/:number", async (req, res) => {
@@ -64,7 +102,6 @@ router.get("/company/:number", async (req, res) => {
         next_due?: string;
         next_made_up_to?: string;
       };
-      annual_return?: { next_due?: string };
     };
 
     let accountsDue: string | null = null;
@@ -86,7 +123,6 @@ router.get("/company/:number", async (req, res) => {
 
     let vatDue: string | null = null;
     let selfAssessmentDue: string | null = null;
-
     if (incorporatedOn) {
       vatDue = addMonths(incorporatedOn, 3);
       selfAssessmentDue = addMonths(new Date().getFullYear() + "-01-31", 0);
@@ -105,6 +141,71 @@ router.get("/company/:number", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch from Companies House");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/company/:number/directors
+// Returns CH active directors merged with stored phone numbers
+router.get("/company/:number/directors", async (req, res) => {
+  const { number } = req.params;
+  const apiKey = getApiKey();
+  const auth = Buffer.from(`${apiKey}:`).toString("base64");
+
+  try {
+    const [chDirectors, { rows: stored }] = await Promise.all([
+      fetchDirectorsFromCH(number, auth),
+      pool.query(
+        `SELECT name, phone FROM directors WHERE company_number = $1`,
+        [number]
+      ),
+    ]);
+
+    const phoneMap = new Map<string, string | null>(
+      stored.map((r: any) => [r.name, r.phone ?? null])
+    );
+
+    const directors = chDirectors.map((d) => ({
+      name: d.name,
+      appointedOn: d.appointedOn,
+      phone: phoneMap.get(d.name) ?? null,
+    }));
+
+    res.json({ directors });
+  } catch (err) {
+    console.error("Directors fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch directors" });
+  }
+});
+
+// PUT /api/company/:number/directors
+// Body: { directors: [{ name, phone }] }
+router.put("/company/:number/directors", async (req, res) => {
+  const { number } = req.params;
+  const { directors } = req.body as {
+    directors: Array<{ name: string; phone: string | null }>;
+  };
+
+  if (!Array.isArray(directors)) {
+    res.status(400).json({ error: "directors must be an array" });
+    return;
+  }
+
+  try {
+    await Promise.all(
+      directors.map((d) =>
+        pool.query(
+          `INSERT INTO directors (company_number, name, phone)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (company_number, name)
+           DO UPDATE SET phone = $3, updated_at = NOW()`,
+          [number, d.name, d.phone ?? null]
+        )
+      )
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Directors save error:", err);
+    res.status(500).json({ error: "Failed to save directors" });
   }
 });
 

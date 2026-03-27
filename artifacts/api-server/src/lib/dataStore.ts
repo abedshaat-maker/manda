@@ -245,3 +245,22 @@ export async function logActivity(
     // Silently fail if table doesn't exist yet
   }
 }
+
+export async function hasActivityLoggedToday(
+  action: string,
+  entityName: string
+): Promise<boolean> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM activity_log
+       WHERE action = $1
+         AND entity_name = $2
+         AND created_at::date = CURRENT_DATE
+       LIMIT 1`,
+      [action, entityName]
+    );
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}

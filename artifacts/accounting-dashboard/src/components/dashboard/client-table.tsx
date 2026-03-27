@@ -3,11 +3,14 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { useLocation } from "wouter";
 import {
-  Search, Download, CheckCircle2, Mail, Trash2, ArrowUpDown, Undo2, UserSearch, ExternalLink
+  Search, Download, CheckCircle2, Mail, Trash2, ArrowUpDown, Undo2, UserSearch, ExternalLink,
+  AlertTriangle, Clock,
 } from "lucide-react";
 import { useListClients, useExportClients, Client } from "@workspace/api-client-react";
 import { useClientMutations } from "@/hooks/use-clients";
-import { getComputedStatus, getDaysLeft } from "@/lib/client-utils";
+import {
+  getComputedStatus, getDaysLeft, getHealthScore, getHealthTier, predictSlipRisk,
+} from "@/lib/client-utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +44,60 @@ const StatusBadge = ({ client }: { client: Client }) => {
     default:
       return <Badge className="bg-blue-500/15 text-blue-600 border-0 rounded-full px-3 py-1 font-semibold shadow-none">Pending</Badge>;
   }
+};
+
+const HealthBadge = ({ client }: { client: Client }) => {
+  const score = getHealthScore(client);
+  const { tier, label } = getHealthTier(score);
+
+  const classes =
+    tier === "green"
+      ? "bg-emerald-500/15 text-emerald-600"
+      : tier === "amber"
+      ? "bg-amber-500/15 text-amber-600"
+      : "bg-destructive/15 text-destructive";
+
+  return (
+    <Badge className={`${classes} border-0 rounded-full px-3 py-1 font-semibold shadow-none tabular-nums`}>
+      {score} {label}
+    </Badge>
+  );
+};
+
+const SlipRiskIndicator = ({ client }: { client: Client }) => {
+  const risk = predictSlipRisk(client);
+
+  if (risk === "high") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex ml-1.5 text-destructive cursor-default">
+            <AlertTriangle className="w-3.5 h-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[220px] text-xs">
+          High slip risk — deadline is close or already overdue and client has not been reminded
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (risk === "medium") {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex ml-1.5 text-amber-500 cursor-default">
+            <Clock className="w-3.5 h-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-[220px] text-xs">
+          Medium slip risk — deadline is approaching
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return null;
 };
 
 export function ClientTable() {
@@ -215,6 +272,7 @@ export function ClientTable() {
             <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border/50">
               <tr>
                 <th className="px-6 py-4 font-semibold">Client</th>
+                <th className="px-4 py-4 font-semibold">Health</th>
                 <th className="px-6 py-4 font-semibold">Company No.</th>
                 <th className="px-6 py-4 font-semibold">Deadline Type</th>
                 <th className="px-6 py-4 font-semibold">
@@ -231,7 +289,7 @@ export function ClientTable() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-6 py-4">
                         <Skeleton className="h-5 w-full" />
                       </td>
@@ -240,7 +298,7 @@ export function ClientTable() {
                 ))
               ) : groupedClients.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <img
                         src={`${import.meta.env.BASE_URL}images/empty-state.png`}
@@ -268,7 +326,7 @@ export function ClientTable() {
                           hasMultiple && !isLast ? "border-b-0" : ""
                         } ${hasMultiple && !isFirst ? "bg-muted/10" : ""}`}
                       >
-                        {/* Client name — only shown on first row of group, spans remaining rows via visual grouping */}
+                        {/* Client name */}
                         <td className="px-6 py-3">
                           {isFirst ? (() => {
                             const isSE = group.companyNumber.startsWith("SE-");
@@ -328,6 +386,11 @@ export function ClientTable() {
                           )}
                         </td>
 
+                        {/* Health score */}
+                        <td className="px-4 py-3">
+                          <HealthBadge client={client} />
+                        </td>
+
                         <td className="px-6 py-3 font-mono text-muted-foreground">
                           {isFirst
                             ? group.companyNumber.startsWith("SE-")
@@ -340,8 +403,12 @@ export function ClientTable() {
                           {client.deadlineType}
                         </td>
 
+                        {/* Due date + slip risk indicator */}
                         <td className="px-6 py-3 text-muted-foreground">
-                          {format(new Date(client.dueDate), "MMM dd, yyyy")}
+                          <span className="inline-flex items-center">
+                            {format(new Date(client.dueDate), "MMM dd, yyyy")}
+                            <SlipRiskIndicator client={client} />
+                          </span>
                         </td>
 
                         <td className="px-6 py-3">

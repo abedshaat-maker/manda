@@ -6,6 +6,7 @@ import {
   getNotificationSettings,
   markNotificationSent,
   logActivity,
+  hasActivityLoggedToday,
 } from "./dataStore.js";
 import { logger } from "./logger.js";
 
@@ -19,6 +20,43 @@ function createTransporter() {
       pass: process.env.SMTP_PASS,
     },
   });
+}
+
+function computeSlipRisk(client: {
+  status: string;
+  dueDate: string;
+  clientEmail: string | null;
+}): "high" | "medium" | "low" {
+  if (client.status === "completed") return "low";
+  if (client.status === "overdue") return "high";
+  const daysLeft = computeDaysLeft(client.dueDate);
+  if (daysLeft <= 14 && !client.clientEmail) return "high";
+  if (daysLeft <= 30) return "medium";
+  return "low";
+}
+
+async function runSlipRiskDetection(): Promise<void> {
+  try {
+    const clients = await loadClients();
+    for (const client of clients) {
+      const risk = computeSlipRisk(client);
+      if (risk !== "high") continue;
+
+      const entityName = `${client.clientName} — ${client.deadlineType}`;
+      const alreadyLogged = await hasActivityLoggedToday("slip_risk_detected", entityName);
+      if (alreadyLogged) continue;
+
+      const daysLeft = computeDaysLeft(client.dueDate);
+      await logActivity(
+        "slip_risk_detected",
+        "deadline",
+        entityName,
+        JSON.stringify({ due_date: client.dueDate, days_left: daysLeft, status: client.status })
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, "Slip risk detection failed");
+  }
 }
 
 export async function runNotificationCheck(): Promise<{ sent: boolean; count: number; reason?: string }> {
@@ -121,15 +159,17 @@ export function startScheduler(): void {
   setInterval(async () => {
     try {
       const settings = await getNotificationSettings();
-      if (!settings.enabled || !settings.email) return;
 
       const now = new Date();
       const [hh, mm] = settings.sendTime.split(":").map(Number);
       const isTime = now.getHours() === hh && now.getMinutes() === mm;
 
-      if (isTime) {
+      if (settings.enabled && settings.email && isTime) {
         await runNotificationCheck();
       }
+
+      // Run slip risk detection every minute regardless of notification settings
+      await runSlipRiskDetection();
     } catch {
       // Silently ignore scheduler errors
     }

@@ -7,7 +7,7 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL?.includes("localhost") ? false : { rejectUnauthorized: false },
 });
 
-// Ensure directors table exists
+// Ensure directors table exists and has email column
 pool.query(`
   CREATE TABLE IF NOT EXISTS directors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -18,7 +18,9 @@ pool.query(`
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(company_number, name)
   )
-`).catch(console.error);
+`).then(() =>
+  pool.query(`ALTER TABLE directors ADD COLUMN IF NOT EXISTS email VARCHAR`)
+).catch(console.error);
 
 const router: IRouter = Router();
 
@@ -155,7 +157,7 @@ router.get("/company/:number/directors", async (req, res) => {
     const [chDirectors, { rows: stored }] = await Promise.all([
       fetchDirectorsFromCH(number, auth),
       pool.query(
-        `SELECT name, phone FROM directors WHERE company_number = $1`,
+        `SELECT name, phone, email FROM directors WHERE company_number = $1`,
         [number]
       ),
     ]);
@@ -163,11 +165,15 @@ router.get("/company/:number/directors", async (req, res) => {
     const phoneMap = new Map<string, string | null>(
       stored.map((r: any) => [r.name, r.phone ?? null])
     );
+    const emailMap = new Map<string, string | null>(
+      stored.map((r: any) => [r.name, r.email ?? null])
+    );
 
     const directors = chDirectors.map((d) => ({
       name: d.name,
       appointedOn: d.appointedOn,
       phone: phoneMap.get(d.name) ?? null,
+      email: emailMap.get(d.name) ?? null,
     }));
 
     res.json({ directors });
@@ -178,11 +184,11 @@ router.get("/company/:number/directors", async (req, res) => {
 });
 
 // PUT /api/company/:number/directors
-// Body: { directors: [{ name, phone }] }
+// Body: { directors: [{ name, phone, email }] }
 router.put("/company/:number/directors", async (req, res) => {
   const { number } = req.params;
   const { directors } = req.body as {
-    directors: Array<{ name: string; phone: string | null }>;
+    directors: Array<{ name: string; phone: string | null; email: string | null }>;
   };
 
   if (!Array.isArray(directors)) {
@@ -194,11 +200,11 @@ router.put("/company/:number/directors", async (req, res) => {
     await Promise.all(
       directors.map((d) =>
         pool.query(
-          `INSERT INTO directors (company_number, name, phone)
-           VALUES ($1, $2, $3)
+          `INSERT INTO directors (company_number, name, phone, email)
+           VALUES ($1, $2, $3, $4)
            ON CONFLICT (company_number, name)
-           DO UPDATE SET phone = $3, updated_at = NOW()`,
-          [number, d.name, d.phone ?? null]
+           DO UPDATE SET phone = $3, email = $4, updated_at = NOW()`,
+          [number, d.name, d.phone ?? null, d.email ?? null]
         )
       )
     );

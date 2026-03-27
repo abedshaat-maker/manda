@@ -132,6 +132,21 @@ router.post("/clients", async (req, res) => {
   }
 
   try {
+    // Duplicate check — prevent same company + deadline type being added twice
+    const existing = await loadClients();
+    const duplicate = existing.find(
+      (c) =>
+        c.companyNumber === body.companyNumber &&
+        c.deadlineType === body.deadlineType &&
+        c.status !== "completed"
+    );
+    if (duplicate) {
+      res.status(409).json({
+        error: `A "${body.deadlineType}" deadline already exists for this company and is not yet completed.`,
+      });
+      return;
+    }
+
     const client = await createClient({
       clientName: body.clientName,
       clientEmail: body.clientEmail ?? null,

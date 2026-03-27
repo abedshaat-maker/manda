@@ -18,6 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { EmailPreviewDialog } from "./email-preview-dialog";
 import { AddClientDialog } from "./add-client-dialog";
 import { CompanyProfileDialog } from "./company-profile-dialog";
@@ -155,6 +159,7 @@ export function ClientTable() {
   const [isExporting, setIsExporting] = useState(false);
   const [profileCompany, setProfileCompany] = useState<{ number: string; name: string } | null>(null);
   const [proposeClient, setProposeClient] = useState<Client | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -243,7 +248,7 @@ export function ClientTable() {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete this deadline?")) remove.mutate({ id: client.id }); }} className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
+          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(client)} className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive">
             <Trash2 className="w-4 h-4" />
           </Button>
         </TooltipTrigger>
@@ -467,6 +472,34 @@ export function ClientTable() {
         onClose={() => setProfileCompany(null)}
       />
       {proposeClient && <ProposeDialog client={proposeClient} onClose={() => setProposeClient(null)} />}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this deadline?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-semibold text-foreground">{deleteTarget?.clientName}</span>
+              {" — "}{deleteTarget?.deadlineType}
+              <br />
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteTarget(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={() => {
+                if (deleteTarget) {
+                  remove.mutate({ id: deleteTarget.id });
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

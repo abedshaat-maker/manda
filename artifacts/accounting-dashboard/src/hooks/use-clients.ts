@@ -9,6 +9,10 @@ import {
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
+function apiMessage(err: any, fallback: string): string {
+  return (err?.data as any)?.error || err?.message || fallback;
+}
+
 export function useClientMutations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -25,7 +29,7 @@ export function useClientMutations() {
         toast({ title: "Success", description: "Client deadline added successfully." });
       },
       onError: (err: any) => {
-        toast({ title: "Error", description: err.message || "Failed to create client.", variant: "destructive" });
+        toast({ title: "Error", description: apiMessage(err, "Failed to create client."), variant: "destructive" });
       }
     },
   });
@@ -37,7 +41,7 @@ export function useClientMutations() {
         toast({ title: "Success", description: "Client updated successfully." });
       },
       onError: (err: any) => {
-        toast({ title: "Error", description: err.message || "Failed to update client.", variant: "destructive" });
+        toast({ title: "Error", description: apiMessage(err, "Failed to update client."), variant: "destructive" });
       }
     },
   });
@@ -49,7 +53,7 @@ export function useClientMutations() {
         toast({ title: "Deleted", description: "Client deadline removed." });
       },
       onError: (err: any) => {
-        toast({ title: "Error", description: err.message || "Failed to delete client.", variant: "destructive" });
+        toast({ title: "Error", description: apiMessage(err, "Failed to delete client."), variant: "destructive" });
       }
     },
   });
@@ -61,7 +65,7 @@ export function useClientMutations() {
         toast({ title: "Completed", description: "Deadline marked as completed." });
       },
       onError: (err: any) => {
-        toast({ title: "Error", description: err.message || "Failed to update status.", variant: "destructive" });
+        toast({ title: "Error", description: apiMessage(err, "Failed to update status."), variant: "destructive" });
       }
     },
   });
@@ -75,7 +79,7 @@ export function useClientMutations() {
           toast({ title: "Reverted", description: "Deadline moved back to pending." });
         },
         onError: (err: any) => {
-          toast({ title: "Error", description: err.message || "Failed to revert.", variant: "destructive" });
+          toast({ title: "Error", description: apiMessage(err, "Failed to revert."), variant: "destructive" });
         },
       }
     );

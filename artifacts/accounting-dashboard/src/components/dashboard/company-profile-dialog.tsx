@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Phone, Building2, Save, Loader2 } from "lucide-react";
+import { User, Phone, Mail, Building2, Save, Loader2 } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import {
   Dialog,
@@ -16,6 +16,7 @@ interface Director {
   name: string;
   appointedOn: string | null;
   phone: string | null;
+  email: string | null;
 }
 
 interface CompanyProfileDialogProps {
@@ -31,6 +32,7 @@ export function CompanyProfileDialog({
 }: CompanyProfileDialogProps) {
   const [directors, setDirectors] = useState<Director[]>([]);
   const [phones, setPhones] = useState<Record<string, string>>({});
+  const [emails, setEmails] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -40,17 +42,21 @@ export function CompanyProfileDialog({
     setLoading(true);
     setDirectors([]);
     setPhones({});
+    setEmails({});
 
     customFetch<{ directors: Director[] }>(
       `/api/company/${companyNumber}/directors`
     )
       .then((data) => {
         setDirectors(data.directors);
-        const initial: Record<string, string> = {};
+        const initPhones: Record<string, string> = {};
+        const initEmails: Record<string, string> = {};
         for (const d of data.directors) {
-          initial[d.name] = d.phone ?? "";
+          initPhones[d.name] = d.phone ?? "";
+          initEmails[d.name] = d.email ?? "";
         }
-        setPhones(initial);
+        setPhones(initPhones);
+        setEmails(initEmails);
       })
       .catch(() => {
         toast({
@@ -73,6 +79,7 @@ export function CompanyProfileDialog({
           directors: directors.map((d) => ({
             name: d.name,
             phone: phones[d.name]?.trim() || null,
+            email: emails[d.name]?.trim() || null,
           })),
         }),
       });
@@ -178,6 +185,22 @@ export function CompanyProfileDialog({
                       value={phones[director.name] ?? ""}
                       onChange={(e) =>
                         setPhones((prev) => ({
+                          ...prev,
+                          [director.name]: e.target.value,
+                        }))
+                      }
+                      className="h-9 rounded-lg bg-background border-border text-sm"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <Input
+                      type="email"
+                      placeholder="Add email address..."
+                      value={emails[director.name] ?? ""}
+                      onChange={(e) =>
+                        setEmails((prev) => ({
                           ...prev,
                           [director.name]: e.target.value,
                         }))

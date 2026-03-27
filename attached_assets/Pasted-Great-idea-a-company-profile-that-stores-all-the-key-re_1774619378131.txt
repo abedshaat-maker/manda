@@ -1,0 +1,167 @@
+Great idea — a company profile that stores all the key reference data an accountant needs in one place is exactly what's missing from most tools. Here's what you should capture:
+
+---
+
+**Full field list by category:**
+
+**Companies House**
+- Company Number, Registered Name, Registered Address, SIC Code, Incorporation Date, Companies House login email + password, Authentication Code (for filing), Confirmation Statement due date
+
+**HMRC**
+- UTR (Unique Taxpayer Reference), Government Gateway User ID + Password, Corporation Tax reference, VAT Registration Number + VAT Return periods + VAT Scheme (standard/flat rate/cash), PAYE Employer Reference, Accounts Office Reference, Self Assessment UTR (if director is also self-employed)
+
+**Identity / Verification**
+- Share Code (for right to work checks), National Insurance Number (for sole traders/directors), Passport number + expiry, Date of birth
+
+**Banking**
+- Bank name, Sort code, Account number, Bank statement contact
+
+**Other useful fields**
+- Year end date, Accounting software used (Xero/QuickBooks/Sage), Bookkeeper name + contact, Previous accountant details, Client onboarding date, Engagement letter signed date + file, Fee amount + billing frequency, AML check date + status
+
+---
+
+Now here's your prompt:
+
+---
+
+**PROMPT — Company Profile Page**
+
+```
+Add a new Company Profile feature to the existing app. This is a dedicated 
+profile page per company that stores all key reference data an accountant 
+needs. Do not change any existing tables, routes, or UI.
+
+--- DATABASE ---
+
+Create a new table called company_profiles with the following columns. 
+All columns are nullable except company_number (the primary key, which 
+links to the existing clients and directors tables via company_number):
+
+CREATE TABLE IF NOT EXISTS company_profiles (
+  company_number        VARCHAR(20) PRIMARY KEY,
+  registered_name       VARCHAR(255),
+  registered_address    TEXT,
+  sic_code              VARCHAR(20),
+  incorporation_date    DATE,
+  ch_email              VARCHAR(255),
+  ch_password           TEXT,
+  auth_code             VARCHAR(20),
+  confirmation_stmt_due DATE,
+
+  utr                   VARCHAR(20),
+  gateway_user_id       VARCHAR(100),
+  gateway_password      TEXT,
+  ct_reference          VARCHAR(30),
+  vat_number            VARCHAR(30),
+  vat_period            VARCHAR(50),
+  vat_scheme            VARCHAR(50),
+  paye_reference        VARCHAR(30),
+  accounts_office_ref   VARCHAR(30),
+  sa_utr                VARCHAR(20),
+
+  share_code            VARCHAR(30),
+  nino                  VARCHAR(20),
+  passport_number       VARCHAR(30),
+  passport_expiry       DATE,
+  date_of_birth         DATE,
+
+  bank_name             VARCHAR(100),
+  sort_code             VARCHAR(10),
+  account_number        VARCHAR(20),
+
+  year_end_date         DATE,
+  accounting_software   VARCHAR(100),
+  bookkeeper_name       VARCHAR(100),
+  bookkeeper_contact    VARCHAR(100),
+  previous_accountant   VARCHAR(100),
+  onboarding_date       DATE,
+  engagement_letter_signed DATE,
+  fee_amount            NUMERIC(10,2),
+  billing_frequency     VARCHAR(50),
+  aml_check_date        DATE,
+  aml_status            VARCHAR(50),
+  notes                 TEXT,
+
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+--- BACKEND ---
+
+Add the following REST endpoints in a new route file 
+api-server/src/routes/companyProfiles.ts, registered under 
+/api/company-profiles, following the exact same pattern as clients.ts:
+
+GET    /api/company-profiles/:company_number   — fetch one profile
+PUT    /api/company-profiles/:company_number   — upsert (insert or update) a profile
+DELETE /api/company-profiles/:company_number   — delete a profile
+
+Add all DB query functions to dataStore.ts following existing patterns.
+Log every create and update to activity_log with action 
+"profile_updated", entity_type "company", entity_name = registered_name.
+
+Sensitive fields (ch_password, gateway_password) must never be returned 
+in GET responses by default. Add a query param ?include_sensitive=true 
+that, when present, includes them. This is for the reveal button on 
+the frontend.
+
+--- FRONTEND ---
+
+Add a new page at /companies/:company_number/profile using React Router.
+
+Link to it from client-table.tsx — add a small profile icon button on 
+each company row that navigates to the profile page for that company_number.
+
+The profile page layout:
+
+1. Page header: company name + company number, with a back button and 
+   an Edit / Save toggle button (view mode by default, switches to 
+   editable form on click).
+
+2. Organise all fields into clearly labelled shadcn/ui Card sections, 
+   one card per category:
+   - Companies House
+   - HMRC
+   - Identity & Verification
+   - Banking
+   - Engagement & Billing
+   - Notes
+
+3. In view mode, sensitive fields (passwords, auth code, sort code, 
+   account number, NI number, UTR, Gateway ID) are masked with bullets 
+   ••••••••. Each has a small eye icon button that reveals the value 
+   inline on click by making a GET request with ?include_sensitive=true. 
+   Use shadcn Tooltip on the eye icon: "Click to reveal".
+
+4. In edit mode, render all fields as shadcn Input or Textarea components. 
+   Date fields use a date picker. VAT Scheme and Billing Frequency use 
+   shadcn Select with these options:
+   - VAT Scheme: Standard, Flat Rate, Cash Accounting, Exempt, Not Registered
+   - Billing Frequency: Monthly, Quarterly, Annually, One-off
+   - AML Status: Pending, Verified, Expired, Not Started
+   - Accounting Software: Xero, QuickBooks, Sage, FreeAgent, Other, None
+
+5. A "Copy" icon button next to every field in view mode that copies 
+   the value to clipboard and shows a brief shadcn Toast "Copied".
+
+6. If the Companies House API already has data for this company_number 
+   (from the existing /api/company/:number proxy), pre-fill 
+   registered_name, registered_address, sic_code, and incorporation_date 
+   automatically when the profile is first created. Do not overwrite 
+   these fields if the profile already exists.
+
+7. At the bottom of the page, show a read-only "Linked Deadlines" 
+   section — a small table of all deadline rows from the clients table 
+   where company_number matches, showing deadline_type, due_date, and 
+   status. Each row links back to the main deadlines view filtered to 
+   that company. Use the existing getComputedStatus() and getDaysLeft() 
+   helpers from client-utils.ts.
+
+Use the existing navy/red design token system, Tailwind v4, and 
+shadcn/ui components throughout. Do not introduce any new dependencies.
+```
+
+---
+
+This gives you a single source of truth for every client — all the credentials, references, and admin details an accountant needs, secured behind reveal-on-click for sensitive fields, with clipboard copy on everything so you're never manually retyping a UTR or auth code again.

@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { useLocation } from "wouter";
 import {
   Search, Download, CheckCircle2, Mail, Trash2, ArrowUpDown, Undo2,
-  UserSearch, ExternalLink, AlertTriangle, Clock, Flame, CalendarClock, Pencil,
+  UserSearch, ExternalLink, AlertTriangle, Clock, Flame, CalendarClock, Pencil, BookOpen,
 } from "lucide-react";
 import { useListClients, useExportClients, Client, customFetch } from "@workspace/api-client-react";
 import { useClientMutations } from "@/hooks/use-clients";
@@ -381,6 +381,16 @@ export function ClientTable() {
                                     </TooltipTrigger>
                                     <TooltipContent>View Full Profile</TooltipContent>
                                   </Tooltip>
+                                  {!isSE && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" onClick={() => navigate(`/companies/${encodeURIComponent(group.companyNumber)}/profile`)} className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                          <BookOpen className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Company Reference Profile</TooltipContent>
+                                    </Tooltip>
+                                  )}
                                 </div>
                               </div>
                             );

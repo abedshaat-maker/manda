@@ -12,9 +12,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Data storage**: Replit PostgreSQL database (`clients` table) — data persists across restarts and deployments
 - **Companies House proxy**: `GET /api/company/:number` — proxies to `api.company-information.service.gov.uk` using `CH_API_KEY` secret with Basic Auth
 - **Key routes**: `/api/clients`, `/api/stats`, `/api/stats/postmortem`, `/api/proposals`, `/api/clients/export`, `/api/clients/:id/email-preview`, `/api/clients/:id/complete`, `/api/clients/:id/propose`, `/api/clients/:id/accept-proposal`, `/api/clients/:id/reject-proposal`, `/api/activity-log`
-- **DB tables**: `clients`, `users`, `directors`, `activity_log`, `notification_settings`, `company_files`
+- **DB tables**: `clients`, `users`, `directors`, `activity_log`, `notification_settings`, `company_files`, `company_profiles`
 - **Object Storage**: Replit GCS bucket provisioned (`replit-objstore-1c6b06d5-b7fb-4a3a-b0ab-9c411fae8436`); presigned-URL upload flow; files served at `/api/storage/objects/*`; metadata registered in `company_files` table
 - **Company Portal**: New "Portal" tab in Company Profile dialog — upload photos (JPG/PNG/WebP) and compliance documents (PDF/DOCX/XLSX); photos displayed as image grid; documents shown as file cards with download + delete
+- **Company Reference Profile Page**: Full-page reference profile at `/companies/:company_number/profile`; 40+ fields across 6 sections (Companies House, HMRC, Identity & Verification, Banking, Engagement & Billing, Notes) + Linked Deadlines table; view/edit mode toggle; CH data auto-prefill on creation; copy-to-clipboard per field; API-sensitive field masking (ch_password, gateway_password via `?include_sensitive=true`); locally-sensitive field masking with eye-icon reveal (UTR, NINO, sort code, account number, auth code, etc.); BookOpen icon button in client table (non-SE clients only) navigates to this page
 - **New DB columns on `clients`**: `buffer_days` (INTEGER), `linked_deadline_id` (UUID FK→clients), `assignee_timezone` (VARCHAR 64), `extension_count` (INTEGER), `proposed_due_date` (DATE), `proposal_status` (VARCHAR 20), `days_late` (INTEGER)
 
 ### Advanced Features (10 implemented)

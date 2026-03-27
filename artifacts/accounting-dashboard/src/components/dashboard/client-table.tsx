@@ -268,34 +268,43 @@ export function ClientTable() {
                       >
                         {/* Client name — only shown on first row of group, spans remaining rows via visual grouping */}
                         <td className="px-6 py-3">
-                          {isFirst ? (
-                            <div className="flex items-start gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-foreground">{group.clientName}</div>
-                                {group.companyName !== group.clientName && (
-                                  <div className="text-xs text-muted-foreground mt-0.5">{group.companyName}</div>
-                                )}
-                                {hasMultiple && (
-                                  <div className="text-xs text-primary/70 mt-1 font-medium">
-                                    {group.deadlines.length} deadlines
-                                  </div>
+                          {isFirst ? (() => {
+                            const isSE = group.companyNumber.startsWith("SE-");
+                            return (
+                              <div className="flex items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-foreground">{group.clientName}</div>
+                                  {isSE ? (
+                                    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 mt-0.5">
+                                      Self Employed
+                                    </span>
+                                  ) : group.companyName !== group.clientName ? (
+                                    <div className="text-xs text-muted-foreground mt-0.5">{group.companyName}</div>
+                                  ) : null}
+                                  {hasMultiple && (
+                                    <div className="text-xs text-primary/70 mt-1 font-medium">
+                                      {group.deadlines.length} deadlines
+                                    </div>
+                                  )}
+                                </div>
+                                {!isSE && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setProfileCompany({ number: group.companyNumber, name: group.companyName })}
+                                        className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      >
+                                        <UserSearch className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View Company Profile & Directors</TooltipContent>
+                                  </Tooltip>
                                 )}
                               </div>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setProfileCompany({ number: group.companyNumber, name: group.companyName })}
-                                    className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <UserSearch className="w-3.5 h-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>View Company Profile & Directors</TooltipContent>
-                              </Tooltip>
-                            </div>
-                          ) : (
+                            );
+                          })() : (
                             <div className="pl-3 border-l-2 border-border/50 text-xs text-muted-foreground italic">
                               ↳ same client
                             </div>
@@ -303,7 +312,11 @@ export function ClientTable() {
                         </td>
 
                         <td className="px-6 py-3 font-mono text-muted-foreground">
-                          {isFirst ? group.companyNumber : ""}
+                          {isFirst
+                            ? group.companyNumber.startsWith("SE-")
+                              ? <span className="text-xs text-muted-foreground/50 not-mono">—</span>
+                              : group.companyNumber
+                            : ""}
                         </td>
 
                         <td className="px-6 py-3 text-foreground font-medium">

@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, Search, Plus, Trash2 } from "lucide-react";
+import { Building2, Search, Plus, Trash2, Briefcase } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { lookupCompany, getLookupCompanyQueryKey } from "@workspace/api-client-react";
 import { useClientMutations } from "@/hooks/use-clients";
@@ -16,21 +14,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 
-const DEADLINE_TYPES = [
+const DEADLINE_TYPES_COMPANY = [
   "Annual Accounts",
   "Confirmation Statement",
   "VAT Return",
-  "Self Assessment",
   "Corporation Tax",
-  "PAYE"
+  "PAYE",
 ];
+
+const DEADLINE_TYPES_SELF_EMPLOYED = [
+  "Self Assessment",
+  "VAT Return",
+  "PAYE",
+];
+
+type ClientType = "limited" | "self-employed";
 
 interface DeadlineItem {
   id: string;
@@ -41,9 +46,10 @@ interface DeadlineItem {
 
 export function AddClientDialog() {
   const [open, setOpen] = useState(false);
+  const [clientType, setClientType] = useState<ClientType>("limited");
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [deadlines, setDeadlines] = useState<DeadlineItem[]>([]);
-  
+
   const { create } = useClientMutations();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -57,6 +63,15 @@ export function AddClientDialog() {
       notes: "",
     },
   });
+
+  const deadlineTypes =
+    clientType === "self-employed" ? DEADLINE_TYPES_SELF_EMPLOYED : DEADLINE_TYPES_COMPANY;
+
+  const handleTypeSwitch = (type: ClientType) => {
+    setClientType(type);
+    form.reset();
+    setDeadlines([]);
+  };
 
   const handleLookup = async () => {
     const num = form.getValues("companyNumber");
@@ -73,7 +88,7 @@ export function AddClientDialog() {
       });
 
       form.setValue("companyName", data.companyName);
-      
+
       const newDeadlines: DeadlineItem[] = [];
       if (data.accountsDueDate) {
         newDeadlines.push({ id: "acc", type: "Annual Accounts", date: data.accountsDueDate, selected: true });
@@ -84,7 +99,7 @@ export function AddClientDialog() {
       if (data.vatReturnDueDate) {
         newDeadlines.push({ id: "vat", type: "VAT Return", date: data.vatReturnDueDate, selected: true });
       }
-      
+
       setDeadlines(newDeadlines);
       toast({ title: "Success", description: "Company details found." });
     } catch (error: any) {
@@ -102,7 +117,12 @@ export function AddClientDialog() {
   };
 
   const addManualDeadline = () => {
-    setDeadlines([...deadlines, { id: Math.random().toString(), type: DEADLINE_TYPES[0], date: format(new Date(), "yyyy-MM-dd"), selected: true }]);
+    setDeadlines([...deadlines, {
+      id: Math.random().toString(),
+      type: deadlineTypes[0],
+      date: format(new Date(), "yyyy-MM-dd"),
+      selected: true,
+    }]);
   };
 
   const removeDeadline = (id: string) => {
@@ -120,19 +140,32 @@ export function AddClientDialog() {
       return;
     }
 
+    const isSelfEmployed = clientType === "self-employed";
+    const clientName = values.clientName || values.companyName;
+
+    const companyNumber = isSelfEmployed
+      ? `SE-${clientName.replace(/\s+/g, "-").toUpperCase()}`
+      : (values.companyNumber || "N/A");
+
+    const companyName = isSelfEmployed
+      ? (values.companyName || clientName)
+      : (values.companyName || "N/A");
+
     try {
       await Promise.all(
-        selectedDeadlines.map(deadline => 
+        selectedDeadlines.map(deadline =>
           create.mutateAsync({
             data: {
-              clientName: values.clientName || values.companyName,
+              clientName,
               clientEmail: values.clientEmail || null,
-              companyNumber: values.companyNumber || "N/A",
-              companyName: values.companyName || "N/A",
+              companyNumber,
+              companyName,
               deadlineType: deadline.type,
               dueDate: deadline.date,
               status: "pending",
-              notes: values.notes || null,
+              notes: values.notes
+                ? `[Self Employed] ${values.notes}`
+                : isSelfEmployed ? "[Self Employed]" : values.notes || null,
             }
           })
         )
@@ -140,13 +173,14 @@ export function AddClientDialog() {
       setOpen(false);
       form.reset();
       setDeadlines([]);
-    } catch (e) {
+      setClientType("limited");
+    } catch {
       // Errors handled by mutation hook
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { form.reset(); setDeadlines([]); setClientType("limited"); } }}>
       <DialogTrigger asChild>
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 rounded-xl px-6">
           <Plus className="w-4 h-4 mr-2" />
@@ -157,69 +191,129 @@ export function AddClientDialog() {
         <div className="p-6 bg-gradient-to-r from-primary/5 to-transparent border-b border-border/50">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
-              <Building2 className="w-6 h-6 text-primary" />
-              Add Client & Deadlines
+              {clientType === "self-employed"
+                ? <Briefcase className="w-6 h-6 text-primary" />
+                : <Building2 className="w-6 h-6 text-primary" />}
+              Add Client &amp; Deadlines
             </DialogTitle>
             <DialogDescription>
-              Lookup a company from Companies House to auto-fill details, or enter manually.
+              {clientType === "limited"
+                ? "Lookup a company from Companies House to auto-fill details, or enter manually."
+                : "Add a self-employed client and their upcoming tax deadlines."}
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="p-6 max-h-[70vh] overflow-y-auto">
+
+          {/* Client type toggle */}
+          <div className="flex rounded-xl overflow-hidden border border-border/60 mb-6">
+            <button
+              type="button"
+              onClick={() => handleTypeSwitch("limited")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
+                clientType === "limited"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              Limited Company
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTypeSwitch("self-employed")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${
+                clientType === "self-employed"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              Self Employed
+            </button>
+          </div>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              
-              <div className="flex gap-4 items-end">
-                <FormField
-                  control={form.control}
-                  name="companyNumber"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel className="text-foreground/80">Company Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 12345678" className="bg-background rounded-xl border-border focus:ring-primary/20" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button 
-                  type="button" 
-                  variant="secondary" 
-                  onClick={handleLookup}
-                  disabled={isLookingUp}
-                  className="rounded-xl px-6 bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                >
-                  {isLookingUp ? "Searching..." : <><Search className="w-4 h-4 mr-2" /> Lookup</>}
-                </Button>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="companyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-foreground/80">Company Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Acme Ltd" className="bg-background rounded-xl" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+              {/* Limited company: company number + lookup */}
+              {clientType === "limited" && (
+                <div className="flex gap-4 items-end">
+                  <FormField
+                    control={form.control}
+                    name="companyNumber"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-foreground/80">Company Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. 12345678" className="bg-background rounded-xl border-border focus:ring-primary/20" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleLookup}
+                    disabled={isLookingUp}
+                    className="rounded-xl px-6 bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  >
+                    {isLookingUp ? "Searching..." : <><Search className="w-4 h-4 mr-2" />Lookup</>}
+                  </Button>
+                </div>
+              )}
+
+              <div className={`grid gap-4 ${clientType === "limited" ? "grid-cols-2" : "grid-cols-1"}`}>
+                {clientType === "limited" && (
+                  <FormField
+                    control={form.control}
+                    name="companyName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-foreground/80">Company Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Acme Ltd" className="bg-background rounded-xl" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="clientName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-foreground/80">Client Contact Name</FormLabel>
+                      <FormLabel className="text-foreground/80">
+                        {clientType === "self-employed" ? "Full Name / Trading Name" : "Client Contact Name"}
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" className="bg-background rounded-xl" {...field} />
+                        <Input
+                          placeholder={clientType === "self-employed" ? "Jane Smith" : "John Doe"}
+                          className="bg-background rounded-xl"
+                          {...field}
+                        />
                       </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
+
+              {/* Self-employed: optional trading / business name */}
+              {clientType === "self-employed" && (
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground/80">Trading / Business Name (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Jane Smith Consulting" className="bg-background rounded-xl" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
@@ -238,38 +332,42 @@ export function AddClientDialog() {
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-foreground">Filing Deadlines</h4>
                   <Button type="button" variant="outline" size="sm" onClick={addManualDeadline} className="rounded-lg h-8">
-                    <Plus className="w-3 h-3 mr-1" /> Add Custom
+                    <Plus className="w-3 h-3 mr-1" /> Add
                   </Button>
                 </div>
 
                 {deadlines.length === 0 ? (
                   <div className="text-center py-8 bg-muted/30 rounded-xl border border-dashed border-border">
-                    <p className="text-sm text-muted-foreground">No deadlines added yet.<br/>Lookup a company or add manually.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {clientType === "limited"
+                        ? "No deadlines added yet. Lookup a company or add manually."
+                        : "Click '+ Add' to add a deadline."}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {deadlines.map((deadline) => (
                       <div key={deadline.id} className="flex items-center gap-3 bg-muted/30 p-3 rounded-xl border border-border/50">
-                        <Checkbox 
-                          checked={deadline.selected} 
-                          onCheckedChange={(c) => updateDeadline(deadline.id, 'selected', !!c)}
+                        <Checkbox
+                          checked={deadline.selected}
+                          onCheckedChange={(c) => updateDeadline(deadline.id, "selected", !!c)}
                           className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                         <div className="flex-1 grid grid-cols-2 gap-3">
-                          <Select value={deadline.type} onValueChange={(v) => updateDeadline(deadline.id, 'type', v)}>
+                          <Select value={deadline.type} onValueChange={(v) => updateDeadline(deadline.id, "type", v)}>
                             <SelectTrigger className="bg-background rounded-lg h-9">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {DEADLINE_TYPES.map(t => (
+                              {deadlineTypes.map(t => (
                                 <SelectItem key={t} value={t}>{t}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                          <Input 
-                            type="date" 
-                            value={deadline.date} 
-                            onChange={(e) => updateDeadline(deadline.id, 'date', e.target.value)}
+                          <Input
+                            type="date"
+                            value={deadline.date}
+                            onChange={(e) => updateDeadline(deadline.id, "date", e.target.value)}
                             className="bg-background rounded-lg h-9"
                           />
                         </div>

@@ -12,6 +12,10 @@ import CalendarPage from "@/pages/calendar";
 import UpcomingPage from "@/pages/upcoming";
 import ActivityPage from "@/pages/activity";
 import SettingsPage from "@/pages/settings";
+import FocusPage from "@/pages/focus";
+import AuditPage from "@/pages/audit";
+import ProposalsPage from "@/pages/proposals";
+import PostmortemPage from "@/pages/postmortem";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -31,7 +35,11 @@ function Router() {
       <Route path="/upcoming" component={UpcomingPage} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/reports" component={ReportsPage} />
+      <Route path="/reports/postmortem" component={PostmortemPage} />
       <Route path="/activity" component={ActivityPage} />
+      <Route path="/audit" component={AuditPage} />
+      <Route path="/focus" component={FocusPage} />
+      <Route path="/proposals" component={ProposalsPage} />
       <Route path="/clients" component={ClientsPage} />
       <Route path="/clients/:companyNumber" component={ClientProfilePage} />
       <Route path="/companies" component={CompaniesPage} />

@@ -9,6 +9,9 @@ import {
   CalendarDays,
   ListOrdered,
   Activity,
+  Zap,
+  GitPullRequest,
+  ClipboardList,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
@@ -22,6 +25,7 @@ const NAV_SECTIONS = [
       { icon: LayoutDashboard, label: "Dashboard", href: "/" },
       { icon: ListOrdered, label: "Upcoming", href: "/upcoming" },
       { icon: CalendarDays, label: "Calendar", href: "/calendar" },
+      { icon: Zap, label: "Focus Mode", href: "/focus" },
     ],
   },
   {
@@ -29,6 +33,7 @@ const NAV_SECTIONS = [
     links: [
       { icon: PieChart, label: "Reports", href: "/reports" },
       { icon: Activity, label: "Activity Log", href: "/activity" },
+      { icon: ClipboardList, label: "Audit Trail", href: "/audit" },
     ],
   },
   {
@@ -36,6 +41,7 @@ const NAV_SECTIONS = [
     links: [
       { icon: Users, label: "Clients", href: "/clients" },
       { icon: Building, label: "Companies", href: "/companies" },
+      { icon: GitPullRequest, label: "Proposals", href: "/proposals" },
       { icon: Settings, label: "Settings", href: "/settings" },
     ],
   },
@@ -91,12 +97,8 @@ export function Sidebar() {
             <TrendingUp className="w-3.5 h-3.5 text-white" />
           </div>
           <div className="min-w-0">
-            <p className="font-display font-bold text-sidebar-foreground text-sm leading-none truncate">
-              {firmName}
-            </p>
-            <p className="text-[10px] text-sidebar-foreground/40 mt-0.5 tracking-wide uppercase font-medium">
-              Deadline Manager
-            </p>
+            <p className="font-display font-bold text-sidebar-foreground text-sm leading-none truncate">{firmName}</p>
+            <p className="text-[10px] text-sidebar-foreground/40 mt-0.5 tracking-wide uppercase font-medium">Deadline Manager</p>
           </div>
         </div>
       </div>
@@ -121,14 +123,8 @@ export function Sidebar() {
                         : "text-sidebar-foreground/55 hover:bg-white/6 hover:text-sidebar-foreground/85 font-medium"
                     }`}
                   >
-                    {active && (
-                      <span className="absolute left-0 w-0.5 h-5 bg-accent rounded-r-full" />
-                    )}
-                    <link.icon
-                      className={`w-4 h-4 flex-shrink-0 ${
-                        active ? "text-accent" : "text-sidebar-foreground/40"
-                      }`}
-                    />
+                    {active && <span className="absolute left-0 w-0.5 h-5 bg-accent rounded-r-full" />}
+                    <link.icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-accent" : "text-sidebar-foreground/40"}`} />
                     {link.label}
                   </Link>
                 );
@@ -150,10 +146,7 @@ export function Sidebar() {
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={logout}
-                className="text-sidebar-foreground/30 hover:text-sidebar-foreground/70 transition-colors flex-shrink-0 p-1 rounded hover:bg-white/10"
-              >
+              <button onClick={logout} className="text-sidebar-foreground/30 hover:text-sidebar-foreground/70 transition-colors flex-shrink-0 p-1 rounded hover:bg-white/10">
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </TooltipTrigger>

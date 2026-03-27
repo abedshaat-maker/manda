@@ -1,4 +1,4 @@
-import { differenceInDays, isBefore, startOfDay, parseISO } from "date-fns";
+import { differenceInDays, isBefore, startOfDay, parseISO, subDays } from "date-fns";
 import type { Client } from "@workspace/api-client-react";
 
 export type ComputedStatus = "completed" | "overdue" | "due_soon" | "pending";
@@ -43,7 +43,7 @@ export function getHealthScore(client: Client): number {
   // Days remaining component (50 pts max)
   let daysScore: number;
   if (status === "completed") {
-    daysScore = 25; // neutral for completed
+    daysScore = 25;
   } else {
     const daysLeft = getDaysLeft(client.dueDate);
     if (daysLeft <= 0) {
@@ -84,4 +84,28 @@ export function predictSlipRisk(client: Client): SlipRisk {
   if (daysLeft <= 30) return "medium";
 
   return "low";
+}
+
+// Feature 3: Buffer Time Manager
+export function getBufferDate(dueDateStr: string, bufferDays: number | null | undefined): Date | null {
+  const days = bufferDays ?? 3;
+  if (days <= 0) return null;
+  const due = parseISO(dueDateStr);
+  return subDays(due, days);
+}
+
+// Feature 6: Timezone-Aware Deadlines
+export function getLocalDueDate(dueDateStr: string, timezone: string | null | undefined): string | null {
+  if (!timezone) return null;
+  try {
+    const date = new Date(dueDateStr + "T00:00:00Z");
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone,
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  } catch {
+    return null;
+  }
 }

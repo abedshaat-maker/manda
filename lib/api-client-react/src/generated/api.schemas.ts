@@ -32,6 +32,14 @@ export const ClientStatus = {
   overdue: "overdue",
 } as const;
 
+export type ProposalStatus = (typeof ProposalStatus)[keyof typeof ProposalStatus];
+
+export const ProposalStatus = {
+  pending: "pending",
+  accepted: "accepted",
+  rejected: "rejected",
+} as const;
+
 export interface Client {
   id: string;
   clientName: string;
@@ -44,6 +52,19 @@ export interface Client {
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
+  // Feature 3: Buffer Time Manager
+  bufferDays?: number | null;
+  // Feature 4: Cascading Deadline Logic
+  linkedDeadlineId?: string | null;
+  // Feature 6: Timezone-Aware Deadlines
+  assigneeTimezone?: string | null;
+  // Feature 8: Burnout Detection
+  extensionCount?: number;
+  // Feature 9: Negotiation Mode
+  proposedDueDate?: string | null;
+  proposalStatus?: ProposalStatus | null;
+  // Feature 10: Post-Mortem Analysis
+  daysLate?: number | null;
 }
 
 export type CreateClientRequestStatus =
@@ -64,6 +85,9 @@ export interface CreateClientRequest {
   dueDate: string;
   status: CreateClientRequestStatus;
   notes?: string | null;
+  bufferDays?: number | null;
+  linkedDeadlineId?: string | null;
+  assigneeTimezone?: string | null;
 }
 
 export type UpdateClientRequestStatus =
@@ -83,6 +107,13 @@ export interface UpdateClientRequest {
   dueDate?: string;
   status?: UpdateClientRequestStatus;
   notes?: string | null;
+  bufferDays?: number | null;
+  linkedDeadlineId?: string | null;
+  assigneeTimezone?: string | null;
+  extensionCount?: number;
+  proposedDueDate?: string | null;
+  proposalStatus?: string | null;
+  daysLate?: number | null;
 }
 
 export interface EmailPreview {
@@ -111,4 +142,10 @@ export interface DashboardStats {
   dueSoon: number;
   upcoming: number;
   completed: number;
+}
+
+export interface PostmortemStats {
+  avgDaysLateByType: Array<{ deadlineType: string; avgDaysLate: number; count: number }>;
+  completedLateCount: number;
+  topExtendedClients: Array<{ clientName: string; companyName: string; extensionCount: number }>;
 }

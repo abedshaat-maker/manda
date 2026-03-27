@@ -19,6 +19,19 @@ export interface Client {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  // Feature 3: Buffer Time Manager
+  bufferDays: number | null;
+  // Feature 4: Cascading Deadline Logic
+  linkedDeadlineId: string | null;
+  // Feature 6: Timezone-Aware Deadlines
+  assigneeTimezone: string | null;
+  // Feature 8: Burnout Detection
+  extensionCount: number;
+  // Feature 9: Negotiation Mode
+  proposedDueDate: string | null;
+  proposalStatus: "pending" | "accepted" | "rejected" | null;
+  // Feature 10: Post-Mortem Analysis
+  daysLate: number | null;
 }
 
 export interface ActivityLogEntry {
@@ -43,6 +56,15 @@ function rowToClient(row: Record<string, unknown>): Client {
     notes: (row.notes as string | null) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
+    bufferDays: (row.buffer_days as number | null) ?? null,
+    linkedDeadlineId: (row.linked_deadline_id as string | null) ?? null,
+    assigneeTimezone: (row.assignee_timezone as string | null) ?? null,
+    extensionCount: (row.extension_count as number) ?? 0,
+    proposedDueDate: row.proposed_due_date
+      ? (row.proposed_due_date as Date).toISOString().slice(0, 10)
+      : null,
+    proposalStatus: (row.proposal_status as "pending" | "accepted" | "rejected" | null) ?? null,
+    daysLate: (row.days_late as number | null) ?? null,
   };
 }
 
@@ -87,6 +109,15 @@ export async function initDb(): Promise<void> {
     INSERT INTO notification_settings (id) VALUES (1)
     ON CONFLICT (id) DO NOTHING
   `);
+
+  // Safe migrations — all use IF NOT EXISTS
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS buffer_days INTEGER`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS linked_deadline_id UUID REFERENCES clients(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS assignee_timezone VARCHAR(64)`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS extension_count INTEGER NOT NULL DEFAULT 0`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS proposed_due_date DATE`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS proposal_status VARCHAR(20)`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS days_late INTEGER`);
 }
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
@@ -124,19 +155,17 @@ export async function markNotificationSent(date: string): Promise<void> {
 }
 
 export async function loadClients(): Promise<Client[]> {
-  const { rows } = await pool.query(
-    `SELECT * FROM clients ORDER BY due_date ASC`
-  );
+  const { rows } = await pool.query(`SELECT * FROM clients ORDER BY due_date ASC`);
   return rows.map(rowToClient);
 }
 
 export async function createClient(
-  data: Omit<Client, "id" | "createdAt" | "updatedAt">
+  data: Omit<Client, "id" | "createdAt" | "updatedAt" | "extensionCount" | "proposedDueDate" | "proposalStatus" | "daysLate">
 ): Promise<Client> {
   const { rows } = await pool.query(
     `INSERT INTO clients
-       (client_name, client_email, company_number, company_name, deadline_type, due_date, status, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (client_name, client_email, company_number, company_name, deadline_type, due_date, status, notes, buffer_days, linked_deadline_id, assignee_timezone)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       data.clientName,
@@ -147,6 +176,9 @@ export async function createClient(
       data.dueDate,
       data.status,
       data.notes ?? null,
+      data.bufferDays ?? null,
+      data.linkedDeadlineId ?? null,
+      data.assigneeTimezone ?? null,
     ]
   );
   return rowToClient(rows[0]);
@@ -174,10 +206,15 @@ export async function updateClient(
   if (data.dueDate !== undefined) { fields.push(`due_date = $${idx++}`); values.push(data.dueDate); }
   if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
   if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
+  if (data.bufferDays !== undefined) { fields.push(`buffer_days = $${idx++}`); values.push(data.bufferDays); }
+  if (data.linkedDeadlineId !== undefined) { fields.push(`linked_deadline_id = $${idx++}`); values.push(data.linkedDeadlineId); }
+  if (data.assigneeTimezone !== undefined) { fields.push(`assignee_timezone = $${idx++}`); values.push(data.assigneeTimezone); }
+  if (data.extensionCount !== undefined) { fields.push(`extension_count = $${idx++}`); values.push(data.extensionCount); }
+  if (data.proposedDueDate !== undefined) { fields.push(`proposed_due_date = $${idx++}`); values.push(data.proposedDueDate); }
+  if (data.proposalStatus !== undefined) { fields.push(`proposal_status = $${idx++}`); values.push(data.proposalStatus); }
+  if (data.daysLate !== undefined) { fields.push(`days_late = $${idx++}`); values.push(data.daysLate); }
 
-  if (fields.length === 0) {
-    return getClientById(id);
-  }
+  if (fields.length === 0) return getClientById(id);
 
   fields.push(`updated_at = NOW()`);
   values.push(id);
@@ -209,6 +246,60 @@ export async function autoUpdateStatuses(): Promise<void> {
         OR (due_date >= CURRENT_DATE AND status = 'overdue')
       )
   `);
+}
+
+export async function getLinkedDeadlines(linkedToId: string): Promise<Client[]> {
+  const { rows } = await pool.query(
+    `SELECT * FROM clients WHERE linked_deadline_id = $1`,
+    [linkedToId]
+  );
+  return rows.map(rowToClient);
+}
+
+export async function getProposals(): Promise<Client[]> {
+  const { rows } = await pool.query(
+    `SELECT * FROM clients WHERE proposal_status = 'pending' ORDER BY due_date ASC`
+  );
+  return rows.map(rowToClient);
+}
+
+export async function getPostmortemStats(): Promise<{
+  avgDaysLateByType: Array<{ deadlineType: string; avgDaysLate: number; count: number }>;
+  completedLateCount: number;
+  topExtendedClients: Array<{ clientName: string; companyName: string; extensionCount: number }>;
+}> {
+  const [byType, lateCount, topExtended] = await Promise.all([
+    pool.query(`
+      SELECT deadline_type, AVG(days_late) as avg_days_late, COUNT(*) as cnt
+      FROM clients
+      WHERE days_late IS NOT NULL AND days_late > 0
+      GROUP BY deadline_type
+      ORDER BY avg_days_late DESC
+    `),
+    pool.query(`SELECT COUNT(*) as cnt FROM clients WHERE days_late IS NOT NULL AND days_late > 0`),
+    pool.query(`
+      SELECT client_name, company_name, MAX(extension_count) as ext
+      FROM clients
+      WHERE extension_count > 0
+      GROUP BY client_name, company_name
+      ORDER BY ext DESC
+      LIMIT 3
+    `),
+  ]);
+
+  return {
+    avgDaysLateByType: byType.rows.map((r) => ({
+      deadlineType: r.deadline_type as string,
+      avgDaysLate: Math.round(Number(r.avg_days_late)),
+      count: Number(r.cnt),
+    })),
+    completedLateCount: Number(lateCount.rows[0]?.cnt ?? 0),
+    topExtendedClients: topExtended.rows.map((r) => ({
+      clientName: r.client_name as string,
+      companyName: r.company_name as string,
+      extensionCount: Number(r.ext),
+    })),
+  };
 }
 
 export async function getActivityLog(limit = 200): Promise<ActivityLogEntry[]> {

@@ -1,13 +1,16 @@
 import { Sidebar } from "./sidebar";
+import React from "react";
 
 interface PageShellProps {
-  title: string;
-  subtitle: string;
+  title: React.ReactNode;
+  description?: string;
+  subtitle?: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
 }
 
-export function PageShell({ title, subtitle, children, actions }: PageShellProps) {
+export function PageShell({ title, description, subtitle, children, actions }: PageShellProps) {
+  const subtext = description ?? subtitle;
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
@@ -21,7 +24,7 @@ export function PageShell({ title, subtitle, children, actions }: PageShellProps
               <h1 className="text-2xl font-display font-bold text-white tracking-tight leading-none">
                 {title}
               </h1>
-              <p className="text-white/55 text-sm mt-1.5">{subtitle}</p>
+              {subtext && <p className="text-white/55 text-sm mt-1.5">{subtext}</p>}
             </div>
             {actions && <div className="flex-shrink-0">{actions}</div>}
           </div>

@@ -11,15 +11,32 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Backend**: `artifacts/api-server` — Express 5, served at `/api`
 - **Data storage**: Replit PostgreSQL database (`clients` table) — data persists across restarts and deployments
 - **Companies House proxy**: `GET /api/company/:number` — proxies to `api.company-information.service.gov.uk` using `CH_API_KEY` secret with Basic Auth
-- **Key routes**: `/api/clients`, `/api/stats`, `/api/clients/export`, `/api/clients/:id/email-preview`, `/api/clients/:id/complete`, `/api/activity-log`
-- **DB tables**: `clients`, `users`, `directors`, `activity_log`
+- **Key routes**: `/api/clients`, `/api/stats`, `/api/stats/postmortem`, `/api/proposals`, `/api/clients/export`, `/api/clients/:id/email-preview`, `/api/clients/:id/complete`, `/api/clients/:id/propose`, `/api/clients/:id/accept-proposal`, `/api/clients/:id/reject-proposal`, `/api/activity-log`
+- **DB tables**: `clients`, `users`, `directors`, `activity_log`, `notification_settings`
+- **New DB columns on `clients`**: `buffer_days` (INTEGER), `linked_deadline_id` (UUID FK→clients), `assignee_timezone` (VARCHAR 64), `extension_count` (INTEGER), `proposed_due_date` (DATE), `proposal_status` (VARCHAR 20), `days_late` (INTEGER)
+
+### Advanced Features (10 implemented)
+1. **Health Score** — coloured badge in table (score 0–100, Good/At Risk/Critical tiers)
+2. **Slippage Prediction** — AlertTriangle/Clock icons per row; scheduler logs high-risk once/day
+3. **Buffer Time Manager** — `buffer_days` per deadline; "Aim for" secondary date shown below due date; configurable in Add Client dialog
+4. **Cascading Deadlines** — when a due date changes, linked deadlines shift by same delta; logged in audit trail
+5. **Focus Mode** — `/focus` page: overdue + due ≤7 days deadlines as cards with Mark Complete button
+6. **Timezone-Aware Deadlines** — `assignee_timezone` stored; localised date shown in due-date tooltip; timezone picker in Add Client dialog
+7. **Audit Trail** — `/audit` page: structured JSON diff logs for every update/delete/complete; filterable by action and client
+8. **Burnout Detection** — `extension_count` auto-incremented on each due-date change; flame icon shown when ≥3
+9. **Negotiation Mode** — calendar-clock icon in table opens Propose New Date dialog; `/proposals` page to accept/reject; proposal flow via PUT routes
+10. **Post-Mortem Analysis** — `/reports/postmortem` page: avg days late by type, completed-late count, top-extended clients; `days_late` recorded on completion
 
 ### Frontend Pages
-- `/` — Dashboard (stats cards + grouped deadline table)
+- `/` — Dashboard (stats cards + grouped deadline table with health scores, slip risk, burnout flame, buffer dates)
 - `/upcoming` — Upcoming Deadlines Feed (chronological, filterable 30/60/90 days)
 - `/calendar` — Monthly Calendar view (deadlines plotted by due date, click to inspect)
+- `/focus` — Focus Mode (urgent deadlines only: overdue + due within 7 days)
 - `/reports` — Reports & Analytics (recharts: bar by month, pie by status, bar by type)
+- `/reports/postmortem` — Post-Mortem Analysis (late completion stats, extension ranking)
 - `/activity` — Activity Log (timestamped record of all system events)
+- `/audit` — Audit Trail (filtered, structured JSON diff view of all changes)
+- `/proposals` — Date Extension Proposals (accept/reject pending proposals)
 - `/clients/:companyNumber` — Client Profile (all deadlines + directors for one company)
 - `/clients` — Clients page
 - `/companies` — Companies page

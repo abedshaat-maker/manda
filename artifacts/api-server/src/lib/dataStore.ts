@@ -54,6 +54,14 @@ export function computeDaysLeft(dueDateStr: string): number {
   return Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+export interface NotificationSettings {
+  enabled: boolean;
+  email: string;
+  daysBefore: number;
+  sendTime: string;
+  lastSentDate: string | null;
+}
+
 export async function initDb(): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS activity_log (
@@ -65,6 +73,54 @@ export async function initDb(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notification_settings (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      enabled BOOLEAN NOT NULL DEFAULT false,
+      email VARCHAR(255) NOT NULL DEFAULT '',
+      days_before INTEGER NOT NULL DEFAULT 7,
+      send_time VARCHAR(10) NOT NULL DEFAULT '09:00',
+      last_sent_date DATE
+    )
+  `);
+  await pool.query(`
+    INSERT INTO notification_settings (id) VALUES (1)
+    ON CONFLICT (id) DO NOTHING
+  `);
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings> {
+  const { rows } = await pool.query(`SELECT * FROM notification_settings WHERE id = 1`);
+  if (rows.length === 0) {
+    return { enabled: false, email: "", daysBefore: 7, sendTime: "09:00", lastSentDate: null };
+  }
+  const r = rows[0];
+  return {
+    enabled: r.enabled as boolean,
+    email: r.email as string,
+    daysBefore: r.days_before as number,
+    sendTime: r.send_time as string,
+    lastSentDate: r.last_sent_date ? (r.last_sent_date as Date).toISOString().slice(0, 10) : null,
+  };
+}
+
+export async function saveNotificationSettings(
+  settings: Partial<Omit<NotificationSettings, "lastSentDate">>
+): Promise<NotificationSettings> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+  if (settings.enabled !== undefined) { fields.push(`enabled = $${idx++}`); values.push(settings.enabled); }
+  if (settings.email !== undefined) { fields.push(`email = $${idx++}`); values.push(settings.email); }
+  if (settings.daysBefore !== undefined) { fields.push(`days_before = $${idx++}`); values.push(settings.daysBefore); }
+  if (settings.sendTime !== undefined) { fields.push(`send_time = $${idx++}`); values.push(settings.sendTime); }
+  if (fields.length === 0) return getNotificationSettings();
+  await pool.query(`UPDATE notification_settings SET ${fields.join(", ")} WHERE id = 1`, values);
+  return getNotificationSettings();
+}
+
+export async function markNotificationSent(date: string): Promise<void> {
+  await pool.query(`UPDATE notification_settings SET last_sent_date = $1 WHERE id = 1`, [date]);
 }
 
 export async function loadClients(): Promise<Client[]> {

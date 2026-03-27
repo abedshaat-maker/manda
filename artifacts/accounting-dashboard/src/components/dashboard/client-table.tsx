@@ -82,7 +82,7 @@ export function ClientTable() {
 
     const map = new Map<string, Client[]>();
     for (const c of filtered) {
-      const key = `${c.clientName}::${c.companyNumber}`;
+      const key = c.companyNumber || `name::${c.clientName}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
     }

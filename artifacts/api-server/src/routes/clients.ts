@@ -64,7 +64,8 @@ router.get("/stats", async (_req, res) => {
       else upcoming++;
     }
 
-    res.json({ total: clients.length, overdue, dueSoon, upcoming, completed });
+    const uniqueCompanies = new Set(clients.map((c) => c.companyNumber)).size;
+    res.json({ total: uniqueCompanies, overdue, dueSoon, upcoming, completed });
   } catch (err) {
     res.status(500).json({ error: "Failed to load stats" });
   }

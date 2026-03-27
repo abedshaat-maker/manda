@@ -21,6 +21,15 @@ export interface Client {
   updatedAt: string;
 }
 
+export interface ActivityLogEntry {
+  id: number;
+  action: string;
+  entityType: string;
+  entityName: string | null;
+  details: string | null;
+  createdAt: string;
+}
+
 function rowToClient(row: Record<string, unknown>): Client {
   return {
     id: row.id as string,
@@ -43,6 +52,19 @@ export function computeDaysLeft(dueDateStr: string): number {
   now.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
   return Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+export async function initDb(): Promise<void> {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS activity_log (
+      id SERIAL PRIMARY KEY,
+      action VARCHAR(100) NOT NULL,
+      entity_type VARCHAR(50) NOT NULL DEFAULT 'client',
+      entity_name VARCHAR(255),
+      details TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 export async function loadClients(): Promise<Client[]> {
@@ -131,4 +153,39 @@ export async function autoUpdateStatuses(): Promise<void> {
         OR (due_date >= CURRENT_DATE AND status = 'overdue')
       )
   `);
+}
+
+export async function getActivityLog(limit = 200): Promise<ActivityLogEntry[]> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM activity_log ORDER BY created_at DESC LIMIT $1`,
+      [limit]
+    );
+    return rows.map((r) => ({
+      id: r.id as number,
+      action: r.action as string,
+      entityType: r.entity_type as string,
+      entityName: (r.entity_name as string | null) ?? null,
+      details: (r.details as string | null) ?? null,
+      createdAt: (r.created_at as Date).toISOString(),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function logActivity(
+  action: string,
+  entityType: string,
+  entityName?: string,
+  details?: string
+): Promise<void> {
+  try {
+    await pool.query(
+      `INSERT INTO activity_log (action, entity_type, entity_name, details) VALUES ($1, $2, $3, $4)`,
+      [action, entityType, entityName ?? null, details ?? null]
+    );
+  } catch {
+    // Silently fail if table doesn't exist yet
+  }
 }

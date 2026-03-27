@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
+import { useLocation } from "wouter";
 import {
-  Search, Download, CheckCircle2, Mail, Trash2, ArrowUpDown, Undo2, UserSearch
+  Search, Download, CheckCircle2, Mail, Trash2, ArrowUpDown, Undo2, UserSearch, ExternalLink
 } from "lucide-react";
 import { useListClients, useExportClients, Client } from "@workspace/api-client-react";
 import { useClientMutations } from "@/hooks/use-clients";
@@ -46,6 +47,7 @@ export function ClientTable() {
   const { data: clients, isLoading } = useListClients();
   const { markComplete, remove, revertPending } = useClientMutations();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("All");
@@ -287,21 +289,36 @@ export function ClientTable() {
                                     </div>
                                   )}
                                 </div>
-                                {!isSE && (
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                  {!isSE && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => setProfileCompany({ number: group.companyNumber, name: group.companyName })}
+                                          className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                        >
+                                          <UserSearch className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>View Directors</TooltipContent>
+                                    </Tooltip>
+                                  )}
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        onClick={() => setProfileCompany({ number: group.companyNumber, name: group.companyName })}
-                                        className="h-7 w-7 flex-shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={() => navigate(`/clients/${encodeURIComponent(group.companyNumber)}`)}
+                                        className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                       >
-                                        <UserSearch className="w-3.5 h-3.5" />
+                                        <ExternalLink className="w-3.5 h-3.5" />
                                       </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>View Company Profile & Directors</TooltipContent>
+                                    <TooltipContent>View Full Profile</TooltipContent>
                                   </Tooltip>
-                                )}
+                                </div>
                               </div>
                             );
                           })() : (

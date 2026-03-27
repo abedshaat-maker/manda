@@ -8,6 +8,7 @@ import {
   deleteClient,
   computeDaysLeft,
   autoUpdateStatuses,
+  logActivity,
   type Client,
 } from "../lib/dataStore.js";
 
@@ -109,6 +110,12 @@ router.post("/clients", async (req, res) => {
       status: body.status,
       notes: body.notes ?? null,
     });
+    await logActivity(
+      "Client added",
+      "client",
+      `${body.clientName} — ${body.deadlineType}`,
+      `Company: ${body.companyName} (${body.companyNumber}), Due: ${body.dueDate}`
+    );
     res.status(201).json(client);
   } catch (err) {
     res.status(500).json({ error: "Failed to create client" });
@@ -138,8 +145,17 @@ router.put("/clients/:id", async (req, res) => {
 
 router.delete("/clients/:id", async (req, res) => {
   try {
+    const existing = await getClientById(req.params.id);
     const ok = await deleteClient(req.params.id);
     if (!ok) { res.status(404).json({ error: "Client not found" }); return; }
+    if (existing) {
+      await logActivity(
+        "Client deleted",
+        "client",
+        `${existing.clientName} — ${existing.deadlineType}`,
+        `Company: ${existing.companyName}`
+      );
+    }
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: "Failed to delete client" });
@@ -148,8 +164,17 @@ router.delete("/clients/:id", async (req, res) => {
 
 router.post("/clients/:id/complete", async (req, res) => {
   try {
+    const existing = await getClientById(req.params.id);
     const updated = await updateClient(req.params.id, { status: "completed" });
     if (!updated) { res.status(404).json({ error: "Client not found" }); return; }
+    if (existing) {
+      await logActivity(
+        "Deadline completed",
+        "deadline",
+        `${existing.clientName} — ${existing.deadlineType}`,
+        `Company: ${existing.companyName}, Due: ${existing.dueDate}`
+      );
+    }
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: "Failed to mark complete" });
@@ -204,6 +229,14 @@ router.post("/clients/:id/send-email", async (req, res) => {
       subject,
       text: body,
     });
+
+    await logActivity(
+      "Email sent",
+      "email",
+      `${client.clientName} — ${client.deadlineType}`,
+      `To: ${to}, Subject: ${subject.substring(0, 80)}`
+    );
+
     res.json({ success: true, message: `Email sent to ${to}` });
   } catch (err: any) {
     console.error("Email send error:", err);

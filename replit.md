@@ -11,7 +11,19 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Backend**: `artifacts/api-server` — Express 5, served at `/api`
 - **Data storage**: Replit PostgreSQL database (`clients` table) — data persists across restarts and deployments
 - **Companies House proxy**: `GET /api/company/:number` — proxies to `api.company-information.service.gov.uk` using `CH_API_KEY` secret with Basic Auth
-- **Key routes**: `/api/clients`, `/api/stats`, `/api/clients/export`, `/api/clients/:id/email-preview`, `/api/clients/:id/complete`
+- **Key routes**: `/api/clients`, `/api/stats`, `/api/clients/export`, `/api/clients/:id/email-preview`, `/api/clients/:id/complete`, `/api/activity-log`
+- **DB tables**: `clients`, `users`, `directors`, `activity_log`
+
+### Frontend Pages
+- `/` — Dashboard (stats cards + grouped deadline table)
+- `/upcoming` — Upcoming Deadlines Feed (chronological, filterable 30/60/90 days)
+- `/calendar` — Monthly Calendar view (deadlines plotted by due date, click to inspect)
+- `/reports` — Reports & Analytics (recharts: bar by month, pie by status, bar by type)
+- `/activity` — Activity Log (timestamped record of all system events)
+- `/clients/:companyNumber` — Client Profile (all deadlines + directors for one company)
+- `/clients` — Clients page
+- `/companies` — Companies page
+- `/settings` — Settings page
 
 ## Stack
 

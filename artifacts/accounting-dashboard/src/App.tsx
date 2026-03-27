@@ -5,8 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import Dashboard from "@/pages/dashboard";
 import ClientsPage from "@/pages/clients";
+import ClientProfilePage from "@/pages/client-profile";
 import CompaniesPage from "@/pages/companies";
 import ReportsPage from "@/pages/reports";
+import CalendarPage from "@/pages/calendar";
+import UpcomingPage from "@/pages/upcoming";
+import ActivityPage from "@/pages/activity";
 import SettingsPage from "@/pages/settings";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
@@ -24,9 +28,13 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/clients" component={ClientsPage} />
-      <Route path="/companies" component={CompaniesPage} />
+      <Route path="/upcoming" component={UpcomingPage} />
+      <Route path="/calendar" component={CalendarPage} />
       <Route path="/reports" component={ReportsPage} />
+      <Route path="/activity" component={ActivityPage} />
+      <Route path="/clients" component={ClientsPage} />
+      <Route path="/clients/:companyNumber" component={ClientProfilePage} />
+      <Route path="/companies" component={CompaniesPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

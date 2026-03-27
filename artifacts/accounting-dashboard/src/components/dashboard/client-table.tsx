@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { useLocation } from "wouter";
 import {
   Search, Download, CheckCircle2, Mail, Trash2, ArrowUpDown, Undo2,
-  UserSearch, ExternalLink, AlertTriangle, Clock, Flame, CalendarClock,
+  UserSearch, ExternalLink, AlertTriangle, Clock, Flame, CalendarClock, Pencil,
 } from "lucide-react";
 import { useListClients, useExportClients, Client, customFetch } from "@workspace/api-client-react";
 import { useClientMutations } from "@/hooks/use-clients";
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EmailPreviewDialog } from "./email-preview-dialog";
 import { AddClientDialog } from "./add-client-dialog";
+import { EditClientDialog } from "./edit-client-dialog";
 import { CompanyProfileDialog } from "./company-profile-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { getExportClientsQueryKey, exportClients, getListClientsQueryKey } from "@workspace/api-client-react";
@@ -160,6 +161,7 @@ export function ClientTable() {
   const [profileCompany, setProfileCompany] = useState<{ number: string; name: string } | null>(null);
   const [proposeClient, setProposeClient] = useState<Client | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
+  const [editTarget, setEditTarget] = useState<Client | null>(null);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -245,6 +247,14 @@ export function ClientTable() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>Send Email Reminder</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" onClick={() => setEditTarget(client)} className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground">
+            <Pencil className="w-4 h-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Edit Details</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
@@ -472,6 +482,7 @@ export function ClientTable() {
         onClose={() => setProfileCompany(null)}
       />
       {proposeClient && <ProposeDialog client={proposeClient} onClose={() => setProposeClient(null)} />}
+      <EditClientDialog client={editTarget} onClose={() => setEditTarget(null)} />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
         <AlertDialogContent>

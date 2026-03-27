@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=Sora:wght@600;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -44,87 +44,115 @@
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
 
-  --font-sans: 'Plus Jakarta Sans', sans-serif;
-  --font-display: 'Outfit', sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Sora', 'Inter', sans-serif;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
 }
 
 :root {
-  /* Navy Blue & Red Theme */
-  --background: 210 20% 98%;
-  --foreground: 222 47% 11%;
-  
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 220 70% 20%;
-  
+  /* Professional Finance Theme — Navy & Red */
+  --background: 216 18% 95%;
+  --foreground: 220 30% 12%;
+
+  --border: 214 22% 84%;
+  --input: 214 22% 84%;
+  --ring: 218 75% 17%;
+
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
-  
+  --card-foreground: 220 30% 12%;
+  --card-border: 214 22% 88%;
+
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 91%;
-  
-  /* Primary Navy */
-  --primary: 220 70% 20%;
+  --popover-foreground: 220 30% 12%;
+  --popover-border: 214 22% 88%;
+
+  /* Deep Authoritative Navy */
+  --primary: 218 75% 17%;
   --primary-foreground: 210 40% 98%;
-  
-  /* Secondary Navy Light */
-  --secondary: 214 32% 91%;
-  --secondary-foreground: 220 70% 20%;
-  
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  
-  /* Accent Red */
-  --accent: 0 85% 45%;
-  --accent-foreground: 210 40% 98%;
-  
-  /* Destructive Red */
-  --destructive: 0 85% 45%;
-  --destructive-foreground: 210 40% 98%;
 
-  --sidebar: 220 70% 20%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 220 70% 15%;
+  /* Soft Navy Secondary */
+  --secondary: 214 28% 90%;
+  --secondary-foreground: 218 75% 17%;
 
-  --radius: 0.75rem;
+  --muted: 216 20% 93%;
+  --muted-foreground: 215 14% 44%;
 
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+  /* Professional Red */
+  --accent: 0 76% 42%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 76% 42%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Sidebar — deep navy with subtle shading */
+  --sidebar: 218 60% 13%;
+  --sidebar-foreground: 210 40% 96%;
+  --sidebar-border: 218 50% 10%;
+
+  --radius: 0.5rem;
+
+  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(16 24 40 / 0.08), 0 1px 2px -1px rgb(16 24 40 / 0.06);
+  --shadow: 0 4px 8px -2px rgb(16 24 40 / 0.08), 0 2px 4px -2px rgb(16 24 40 / 0.06);
+  --shadow-md: 0 8px 16px -4px rgb(16 24 40 / 0.08), 0 4px 6px -4px rgb(16 24 40 / 0.05);
+  --shadow-lg: 0 16px 32px -8px rgb(16 24 40 / 0.10), 0 8px 12px -6px rgb(16 24 40 / 0.06);
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    @apply font-semibold tracking-tight;
+    @apply font-bold tracking-tight;
+    letter-spacing: -0.02em;
   }
 }
 
-/* Custom Scrollbar for a premium feel */
+/* Finance-grade numeric rendering — tabular figures */
+.tabular-nums,
+table td,
+.stat-number {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Refined scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
+  background: hsl(214 22% 78%);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+  background: hsl(214 22% 65%);
 }
+
+/* Table hairline borders for data density */
+.finance-table thead th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Hide scrollbar utility */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

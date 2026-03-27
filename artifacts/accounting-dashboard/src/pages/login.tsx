@@ -1,6 +1,6 @@
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { LayoutDashboard, Lock, User, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, Lock, User, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,23 +23,61 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sidebar via-sidebar to-[#0f1a2e] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center shadow-lg shadow-accent/30 mb-4">
-            <LayoutDashboard className="w-7 h-7 text-white" />
+    <div className="min-h-screen bg-sidebar flex">
+      {/* Left panel — brand */}
+      <div className="hidden lg:flex flex-col justify-between w-80 flex-shrink-0 px-10 py-12 border-r border-white/8">
+        <div>
+          <div className="flex items-center gap-2.5 mb-12">
+            <div className="w-8 h-8 rounded-md bg-accent flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-display font-bold text-white text-sm">ADM Pro</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">ADM Pro</h1>
-          <p className="text-white/50 text-sm mt-1">Accounting Deadline Manager</p>
+
+          <h2 className="text-white font-display font-bold text-2xl leading-tight mb-3">
+            Your clients' deadlines.<br />Under control.
+          </h2>
+          <p className="text-white/45 text-sm leading-relaxed">
+            Manage Companies House and HMRC filing obligations for all your clients in one place.
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl shadow-black/30 p-8">
-          <h2 className="text-xl font-semibold text-foreground mb-1">Sign in</h2>
-          <p className="text-sm text-muted-foreground mb-6">Enter your credentials to access the dashboard</p>
+        <div className="space-y-3">
+          {[
+            "Real-time Companies House lookup",
+            "Automated deadline tracking",
+            "Director & client profiles",
+          ].map((f) => (
+            <div key={f} className="flex items-center gap-2.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+              <span className="text-white/50 text-xs font-medium">{f}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-sm">
+
+          <div className="mb-8">
+            <div className="flex items-center gap-2.5 mb-6 lg:hidden">
+              <div className="w-7 h-7 rounded-md bg-accent flex items-center justify-center">
+                <TrendingUp className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="font-display font-bold text-foreground text-sm">ADM Pro</span>
+            </div>
+            <h1 className="text-xl font-display font-bold text-foreground tracking-tight">Sign in to your account</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Enter your credentials to continue
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="username" className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">
+                Username
+              </Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -49,14 +87,16 @@ export default function LoginPage() {
                   placeholder="Enter your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 bg-white border-border/70 focus:ring-primary/20"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">
+                Password
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -66,7 +106,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 pr-10"
+                  className="pl-9 pr-10 bg-white border-border/70 focus:ring-primary/20"
                   required
                 />
                 <button
@@ -80,24 +120,23 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-xl">
+              <div className="bg-destructive/8 border border-destructive/20 text-destructive text-sm px-4 py-3 rounded-md">
                 {error}
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               disabled={loading || !username || !password}
             >
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
 
-          <p className="text-xs text-center text-muted-foreground mt-6">
-            Default credentials: <span className="font-mono font-medium">admin</span> / <span className="font-mono font-medium">admin123</span>
-            <br />
-            Change your password in Settings after logging in.
+          <p className="text-xs text-center text-muted-foreground/70 mt-6 border-t border-border/50 pt-5">
+            Default: <span className="font-mono font-medium text-foreground/60">admin</span> / <span className="font-mono font-medium text-foreground/60">admin123</span>
+            {" "}· Change in Settings after login.
           </p>
         </div>
       </div>

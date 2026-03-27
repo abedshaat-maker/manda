@@ -1,0 +1,83 @@
+Perfect — this is exactly what I needed. This is a well-built accounting app for a single accountant managing UK client deadlines. Here's your prompt, ready to paste directly into Replient:
+
+---
+
+**PROMPT TO PASTE INTO REPLIENT:**
+
+---
+
+You are working on an existing accounting deadline management app. Here is the full context:
+
+**Stack:** React 18 + TypeScript + Vite (frontend), Node.js + Express 5 + TypeScript (backend), PostgreSQL via `pg` driver (no ORM), Tailwind CSS v4, shadcn/ui, deployed on Replit.
+
+**Existing data models:** `clients` (one row = one deadline: uuid, client_name, client_email, company_number, company_name, deadline_type, due_date, status, notes, created_at, updated_at), `users` (single admin, bcrypt + JWT), `directors`, `activity_log`, `notification_settings` (single row: enabled, email, days_before, send_time, last_sent_date).
+
+**Key files:** `dataStore.ts` (all DB queries), `clients.ts` (REST routes), `scheduler.ts` (cron), `client-table.tsx` (main UI), `client-utils.ts` (getComputedStatus, getDaysLeft), `upcoming.tsx`, `calendar.tsx`.
+
+**Existing notifications:** Daily Gmail SMTP digest via nodemailer, setInterval scheduler, configurable days-before window and send time, test send button, activity log records every send.
+
+Do not change any existing functionality, styling, data models, or API routes. Use the existing Tailwind + shadcn/ui component patterns and the existing navy/red design token system. All new DB columns must be added as nullable with a safe migration — no breaking changes to existing rows. All new backend logic goes in `dataStore.ts` and new routes follow the existing pattern in `clients.ts`. Log all significant actions to `activity_log`.
+
+Now add the following features one at a time. For each feature, show the full implementation: any DB migration SQL, backend changes, frontend components, and how it plugs into existing files.
+
+---
+
+**Feature 1 — Deadline Health Score**
+Add a computed health score (0–100) per deadline row, visible as a coloured badge in `client-table.tsx`. The score is calculated client-side in `client-utils.ts` using: days remaining (weight 50%), current status (overdue = 0, pending = proportional, completed = 100), and whether a reminder email has been sent (weight 10%). Map the score to three badge colours using existing shadcn/ui Badge variants: green (75–100), amber (40–74), red (0–39). No new DB columns needed.
+
+---
+
+**Feature 2 — Slippage Prediction**
+In `client-utils.ts`, add a `predictSlipRisk(deadline)` function that returns `"high" | "medium" | "low"`. Logic: if status is already overdue → high; if due within 14 days and no email has been sent → high; if due within 30 days → medium; else low. Show a small inline warning icon + tooltip (shadcn Tooltip) next to the due date in `client-table.tsx` when risk is high or medium. Log a prediction event to `activity_log` when a high-risk deadline is first detected by the scheduler in `scheduler.ts`.
+
+---
+
+**Feature 3 — Buffer Time Manager**
+Add a nullable `buffer_days` integer column to the `clients` table (migration: `ALTER TABLE clients ADD COLUMN IF NOT EXISTS buffer_days INTEGER`). In the Add/Edit deadline dialog, add a shadcn/ui Input field labelled "Working buffer (days before deadline)" with a default of 3. In `client-utils.ts`, add `getBufferDate(due_date, buffer_days)` which returns the target completion date. Show this as a muted secondary date line beneath the due date in `client-table.tsx`, labelled "Aim to complete by". Include `buffer_days` in all existing GET/PUT API responses.
+
+---
+
+**Feature 4 — Cascading Deadline Logic**
+Add a nullable `linked_deadline_id` uuid column to `clients` (migration: `ALTER TABLE clients ADD COLUMN IF NOT EXISTS linked_deadline_id UUID REFERENCES clients(id) ON DELETE SET NULL`). In the Add/Edit dialog, add an optional dropdown "Depends on" that lists other deadlines for the same company. In the PUT `/api/clients/:id` route, after updating a due date, query for any rows where `linked_deadline_id = id` and shift their `due_date` by the same number of days delta. Log each cascaded update to `activity_log` with action `"cascade_update"`.
+
+---
+
+**Feature 5 — Focus Mode**
+Add a `/focus` route in the frontend router. The Focus Mode page renders only deadlines where status is `overdue` OR `due_date` is within 7 days, sorted by due_date ascending, displayed as large shadcn/ui Cards (not a table) with the health score badge, slip risk indicator, and a one-click "Mark Complete" button calling the existing `POST /api/clients/:id/complete` endpoint. Add a "Focus Mode" link in the existing sidebar nav. No new backend needed — use the existing `GET /api/clients` response filtered client-side.
+
+---
+
+**Feature 6 — Timezone-Aware Deadlines**
+Add a nullable `assignee_timezone` varchar column to `clients` (migration: `ALTER TABLE clients ADD COLUMN IF NOT EXISTS assignee_timezone VARCHAR(64)`). In the Add/Edit dialog add an optional timezone selector (use the browser's `Intl.supportedValuesOf('timeZone')` list in a shadcn Select). In `client-utils.ts`, add `getLocalDueDate(due_date, timezone)` using the browser-native `Intl.DateTimeFormat` — no extra libraries. Show the localised due date in a tooltip on hover over the due date cell in `client-table.tsx`.
+
+---
+
+**Feature 7 — Deadline Audit Trail**
+Extend the existing `activity_log` table — no schema changes needed, it already has `action, entity_type, entity_name, details, created_at`. Ensure every existing PUT, DELETE, POST /complete, and cascade update writes a structured JSON string to `details` containing `{ from, to, changed_fields }`. Add a new frontend page `/audit` showing a filterable timeline of `activity_log` entries using shadcn/ui's existing component patterns. Filter by entity_name (search input) and action type (select dropdown). Link to it from the Settings page.
+
+---
+
+**Feature 8 — Burnout Detection**
+In `scheduler.ts`, after the daily notification check, run a query: for each deadline that has been extended (detected by checking `updated_at` differs from `created_at` by more than 1 day and due_date is in the future), count how many times it has been pushed. Add a nullable `extension_count` integer column defaulting to 0 (`ALTER TABLE clients ADD COLUMN IF NOT EXISTS extension_count INTEGER DEFAULT 0`). Increment it on every PUT that changes `due_date`. In `client-table.tsx`, show a small amber warning badge "Extended ×N" if `extension_count >= 2`. In the daily email digest template in `scheduler.ts`, add a "Deadlines extended 3+ times" section at the bottom.
+
+---
+
+**Feature 9 — Negotiation Mode**
+Add a nullable `proposed_due_date` date column and `proposal_status` varchar (values: null, `"pending"`, `"accepted"`, `"rejected"`) to `clients`. In `client-table.tsx`, add a "Propose new date" button per row that opens a shadcn Dialog with a date picker. On submit, write to `proposed_due_date` and set `proposal_status = "pending"` via a new PUT `/api/clients/:id/propose` route. Add a new Settings-linked page `/proposals` listing all pending proposals with Accept (copies proposed_due_date to due_date, clears proposal fields) and Reject buttons. Log all proposal actions to `activity_log`.
+
+---
+
+**Feature 10 — Post-Mortem Analysis**
+Add a `/reports/postmortem` frontend page. It calls `GET /api/stats` (extend this endpoint to also return: average days overdue per deadline_type, count of deadlines completed after due_date, top 3 most-extended clients). Display results as shadcn/ui Cards with simple inline stats. Add a "Days to complete after due date" computed field: in the PUT `/api/clients/:id/complete` route, record `CURRENT_DATE - due_date` into a new nullable `days_late` integer column. Use this in the post-mortem report. Link the page from the sidebar under a "Reports" section.
+
+---
+
+Implement each feature fully before moving to the next. After each one, confirm what files were changed and what the migration SQL is (if any).
+
+---
+
+That's your prompt. A few tips for using it:
+
+- Paste the whole thing at once into Replient, then after Feature 1 is done, tell it "implement Feature 2" and so on — this keeps each change isolated and reviewable.
+- Features 1, 2, and 5 need zero DB migrations so they're the safest to start with.
+- Features 4 and 9 touch due dates directly, so test those in a non-production copy first.

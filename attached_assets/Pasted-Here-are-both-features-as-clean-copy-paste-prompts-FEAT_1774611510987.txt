@@ -1,0 +1,55 @@
+Here are both features as clean copy-paste prompts:
+
+---
+
+**FEATURE 1 — Deadline Health Score**
+
+```
+In client-utils.ts, add a new exported function called getHealthScore(deadline) that computes a score from 0 to 100 based on three factors:
+
+1. Days remaining (50% weight): if overdue = 0 points, if due today = 0, scale linearly up to 50 points for 30+ days remaining
+2. Status (40% weight): overdue = 0, pending = 20, completed = 40
+3. Email sent (10% weight): if a reminder email has been sent to this client = 10 points, otherwise 0 — use client_email presence + last_sent_date from notification_settings as a proxy, or add a nullable boolean column last_reminded to the clients table if needed
+
+Map the score to three badge colours:
+- 75–100 → green (use shadcn Badge with variant="success" or closest existing green style)
+- 40–74 → amber
+- 0–39 → red
+
+In client-table.tsx, add a "Health" column as the first column after the client name. Render the badge there for every deadline row. The badge should show the number and a label, e.g. "87 Good", "45 At Risk", "12 Critical".
+
+Do not change any other columns, layout, or existing logic. Use the existing Tailwind and shadcn/ui patterns already in the file.
+```
+
+---
+
+**FEATURE 2 — Slippage Prediction**
+
+```
+In client-utils.ts, add a new exported function called predictSlipRisk(deadline) that returns one of three string values: "high", "medium", or "low".
+
+Use this logic:
+- If status is "overdue" → return "high"
+- If due_date is within 14 days AND no reminder email has been sent to the client → return "high"
+- If due_date is within 30 days → return "medium"
+- Otherwise → return "low"
+
+In client-table.tsx, next to the due date value in the due date cell, add a small inline icon + shadcn Tooltip:
+- High risk: red warning triangle icon with tooltip text "High slip risk — deadline is close or already overdue and client has not been reminded"
+- Medium risk: amber clock icon with tooltip text "Medium slip risk — deadline is approaching"
+- Low risk: show nothing
+
+In scheduler.ts, inside the existing daily notification check loop, after evaluating each deadline, if predictSlipRisk returns "high", write a new entry to activity_log with:
+- action: "slip_risk_detected"
+- entity_type: "deadline"
+- entity_name: the client_name + deadline_type
+- details: JSON string with { due_date, days_left, status }
+
+Only log it if it has not already been logged today for that same deadline (check activity_log for an existing entry with the same entity_name and action on the current date).
+
+Do not change any other logic, styling, or files beyond client-utils.ts, client-table.tsx, and scheduler.ts.
+```
+
+---
+
+Paste Feature 1 first, let Replient implement and confirm it, then paste Feature 2. Doing them separately means if anything breaks you know exactly which one caused it.

@@ -1,6 +1,6 @@
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { TrendingUp, Lock, User, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { TrendingUp, Lock, User, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +49,7 @@ export default function LoginPage() {
             "Director & client profiles",
           ].map((f) => (
             <div key={f} className="flex items-center gap-2.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
               <span className="text-white/50 text-xs font-medium">{f}</span>
             </div>
           ))}

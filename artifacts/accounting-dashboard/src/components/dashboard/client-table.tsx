@@ -210,7 +210,7 @@ export function ClientTable() {
   }, [clients, search, filter]);
 
   const DeadlineActions = ({ client }: { client: Client }) => (
-    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="flex items-center justify-end gap-1">
       {client.status !== "completed" ? (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -362,7 +362,7 @@ export function ClientTable() {
                                     <div className="text-xs text-primary/70 mt-1 font-medium">{group.deadlines.length} deadlines</div>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <div className="flex items-center gap-1 flex-shrink-0">
                                   {!isSE && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>

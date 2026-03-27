@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/express-session": "^1.18.2",
     "@types/jsonwebtoken": "^9.0.10",
@@ -23,12 +24,14 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "express-session": "^1.19.0",
+    "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.4",
     "pg": "^8.20.0",
     "pino": "^9",
-    "pino-http": "^10"
+    "pino-http": "^10",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

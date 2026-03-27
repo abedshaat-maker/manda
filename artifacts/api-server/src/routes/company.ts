@@ -22,6 +22,20 @@ pool.query(`
   pool.query(`ALTER TABLE directors ADD COLUMN IF NOT EXISTS email VARCHAR`)
 ).catch(console.error);
 
+// Ensure company_files table exists
+pool.query(`
+  CREATE TABLE IF NOT EXISTS company_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_number VARCHAR NOT NULL,
+    file_name VARCHAR NOT NULL,
+    category VARCHAR NOT NULL DEFAULT 'document',
+    content_type VARCHAR NOT NULL,
+    object_path VARCHAR NOT NULL,
+    description VARCHAR,
+    uploaded_at TIMESTAMP DEFAULT NOW()
+  )
+`).catch(console.error);
+
 const router: IRouter = Router();
 
 const CH_BASE = "https://api.company-information.service.gov.uk";
@@ -212,6 +226,71 @@ router.put("/company/:number/directors", async (req, res) => {
   } catch (err) {
     console.error("Directors save error:", err);
     res.status(500).json({ error: "Failed to save directors" });
+  }
+});
+
+// GET /api/company/:number/files
+router.get("/company/:number/files", async (req, res) => {
+  const { number } = req.params;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, file_name, category, content_type, object_path, description, uploaded_at
+       FROM company_files WHERE company_number = $1 ORDER BY uploaded_at DESC`,
+      [number]
+    );
+    res.json({ files: rows });
+  } catch (err) {
+    console.error("Files fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch files" });
+  }
+});
+
+// POST /api/company/:number/files
+router.post("/company/:number/files", async (req, res) => {
+  const { number } = req.params;
+  const { fileName, category, contentType, objectPath, description } = req.body as {
+    fileName: string;
+    category: string;
+    contentType: string;
+    objectPath: string;
+    description?: string;
+  };
+
+  if (!fileName || !category || !contentType || !objectPath) {
+    res.status(400).json({ error: "fileName, category, contentType, objectPath are required" });
+    return;
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO company_files (company_number, file_name, category, content_type, object_path, description)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, file_name, category, content_type, object_path, description, uploaded_at`,
+      [number, fileName, category, contentType, objectPath, description ?? null]
+    );
+    res.status(201).json({ file: rows[0] });
+  } catch (err) {
+    console.error("File register error:", err);
+    res.status(500).json({ error: "Failed to register file" });
+  }
+});
+
+// DELETE /api/company/:number/files/:id
+router.delete("/company/:number/files/:id", async (req, res) => {
+  const { number, id } = req.params;
+  try {
+    const { rowCount } = await pool.query(
+      `DELETE FROM company_files WHERE id = $1 AND company_number = $2`,
+      [id, number]
+    );
+    if (!rowCount) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error("File delete error:", err);
+    res.status(500).json({ error: "Failed to delete file" });
   }
 });
 

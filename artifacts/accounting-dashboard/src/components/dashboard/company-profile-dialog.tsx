@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User, Phone, Mail, Building2, Save, Loader2, CalendarDays,
-  Clock, FileText, CheckCircle2, StickyNote,
+  Clock, FileText, CheckCircle2, StickyNote, UploadCloud,
+  ImageIcon, Trash2, FolderOpen, X,
 } from "lucide-react";
 import { customFetch, useListClients, Client } from "@workspace/api-client-react";
 import { useClientMutations } from "@/hooks/use-clients";
@@ -18,6 +19,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const TIMEZONES: string[] =
   typeof Intl !== "undefined" && (Intl as any).supportedValuesOf
@@ -27,6 +33,8 @@ const TIMEZONES: string[] =
         "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
         "Asia/Dubai", "Asia/Kolkata", "Australia/Sydney",
       ];
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface Director {
   name: string;
@@ -43,6 +51,16 @@ interface DeadlineEdit {
   status: string;
 }
 
+interface CompanyFile {
+  id: string;
+  file_name: string;
+  category: string;
+  content_type: string;
+  object_path: string;
+  description: string | null;
+  uploaded_at: string;
+}
+
 interface CompanyProfileDialogProps {
   companyNumber: string | null;
   companyName: string;
@@ -54,7 +72,6 @@ export function CompanyProfileDialog({
   companyName,
   onClose,
 }: CompanyProfileDialogProps) {
-  // ── Client data ──────────────────────────────────────────────────────────
   const { data: allClients = [] } = useListClients();
   const { update } = useClientMutations();
   const { toast } = useToast();
@@ -64,7 +81,7 @@ export function CompanyProfileDialog({
   );
   const firstClient = companyClients[0];
 
-  // ── Details tab state ────────────────────────────────────────────────────
+  // ── Details tab ──────────────────────────────────────────────────────────
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
@@ -99,7 +116,7 @@ export function CompanyProfileDialog({
     }
   };
 
-  // ── Deadlines tab state ──────────────────────────────────────────────────
+  // ── Deadlines tab ────────────────────────────────────────────────────────
   const [deadlineEdits, setDeadlineEdits] = useState<Record<string, DeadlineEdit>>({});
   const [savingDeadline, setSavingDeadline] = useState<string | null>(null);
 
@@ -144,7 +161,7 @@ export function CompanyProfileDialog({
     }
   };
 
-  // ── Directors tab state ──────────────────────────────────────────────────
+  // ── Directors tab ────────────────────────────────────────────────────────
   const [directors, setDirectors] = useState<Director[]>([]);
   const [phones, setPhones] = useState<Record<string, string>>({});
   const [dirEmails, setDirEmails] = useState<Record<string, string>>({});
@@ -203,6 +220,97 @@ export function CompanyProfileDialog({
     }
   };
 
+  // ── Portal tab ───────────────────────────────────────────────────────────
+  const [portalFiles, setPortalFiles] = useState<CompanyFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [photoDesc, setPhotoDesc] = useState("");
+  const [docDesc, setDocDesc] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchPortalFiles = async () => {
+    if (!companyNumber) return;
+    setLoadingFiles(true);
+    try {
+      const data = await customFetch<{ files: CompanyFile[] }>(
+        `/api/company/${companyNumber}/files`
+      );
+      setPortalFiles(data.files);
+    } catch {
+      toast({ title: "Error", description: "Could not load company files.", variant: "destructive" });
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPortalFiles();
+  }, [companyNumber]);
+
+  const uploadFile = async (
+    file: File,
+    category: "photo" | "document",
+    description: string,
+    setUploading: (v: boolean) => void
+  ) => {
+    if (!companyNumber) return;
+    setUploading(true);
+    try {
+      const urlRes = await customFetch<{ uploadURL: string; objectPath: string }>(
+        "/api/storage/uploads/request-url",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+        }
+      );
+
+      await fetch(urlRes.uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      await customFetch(`/api/company/${companyNumber}/files`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          category,
+          contentType: file.type,
+          objectPath: urlRes.objectPath,
+          description: description.trim() || null,
+        }),
+      });
+
+      toast({ title: "Uploaded", description: `${file.name} added to portal.` });
+      if (category === "photo") setPhotoDesc("");
+      else setDocDesc("");
+      await fetchPortalFiles();
+    } catch {
+      toast({ title: "Upload failed", description: "Could not upload file. Please try again.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteFile = async (fileId: string, fileName: string) => {
+    if (!companyNumber) return;
+    try {
+      await customFetch(`/api/company/${companyNumber}/files/${fileId}`, { method: "DELETE" });
+      toast({ title: "Deleted", description: `${fileName} removed.` });
+      setPortalFiles((prev) => prev.filter((f) => f.id !== fileId));
+    } catch {
+      toast({ title: "Delete failed", description: "Could not remove file.", variant: "destructive" });
+    }
+  };
+
+  const photos = portalFiles.filter((f) => f.category === "photo");
+  const documents = portalFiles.filter((f) => f.category === "document");
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
   function formatDirectorName(name: string) {
     return name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
@@ -214,9 +322,20 @@ export function CompanyProfileDialog({
     return "bg-orange-500/15 text-orange-600";
   };
 
+  const fileExt = (name: string) => name.split(".").pop()?.toUpperCase() ?? "FILE";
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
   return (
     <Dialog open={!!companyNumber} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[620px] bg-card rounded-2xl overflow-hidden p-0 border-border/50 shadow-2xl">
+      <DialogContent className="sm:max-w-[680px] bg-card rounded-2xl overflow-hidden p-0 border-border/50 shadow-2xl">
         {/* Header */}
         <div className="p-6 pb-4 bg-gradient-to-r from-primary/5 to-transparent border-b border-border/50">
           <DialogHeader>
@@ -237,7 +356,7 @@ export function CompanyProfileDialog({
 
         {/* Tabs */}
         <Tabs defaultValue="details" className="flex flex-col">
-          <TabsList className="mx-6 mt-4 mb-0 grid grid-cols-3 bg-muted/50 rounded-xl">
+          <TabsList className="mx-6 mt-4 mb-0 grid grid-cols-4 bg-muted/50 rounded-xl">
             <TabsTrigger value="details" className="rounded-lg text-xs font-semibold">
               Client Details
             </TabsTrigger>
@@ -246,6 +365,9 @@ export function CompanyProfileDialog({
             </TabsTrigger>
             <TabsTrigger value="directors" className="rounded-lg text-xs font-semibold">
               Directors
+            </TabsTrigger>
+            <TabsTrigger value="portal" className="rounded-lg text-xs font-semibold">
+              Portal
             </TabsTrigger>
           </TabsList>
 
@@ -256,7 +378,6 @@ export function CompanyProfileDialog({
                 Company name and number are imported from Companies House and cannot be changed here.
               </p>
 
-              {/* Read-only CH fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Company Name</label>
@@ -272,7 +393,6 @@ export function CompanyProfileDialog({
                 </div>
               </div>
 
-              {/* Editable fields */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                   <User className="w-3.5 h-3.5" /> Contact Name
@@ -325,7 +445,6 @@ export function CompanyProfileDialog({
                   if (!edit) return null;
                   return (
                     <div key={c.id} className="bg-muted/30 border border-border/50 rounded-xl p-4 space-y-3">
-                      {/* Deadline header */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-primary flex-shrink-0" />
@@ -336,7 +455,6 @@ export function CompanyProfileDialog({
                         </Badge>
                       </div>
 
-                      {/* Due date */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -367,7 +485,6 @@ export function CompanyProfileDialog({
                         </div>
                       </div>
 
-                      {/* Buffer + Timezone */}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Buffer Days</label>
@@ -402,7 +519,6 @@ export function CompanyProfileDialog({
                         </div>
                       </div>
 
-                      {/* Notes */}
                       <div className="space-y-1">
                         <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           <StickyNote className="w-3 h-3" /> Notes
@@ -531,6 +647,228 @@ export function CompanyProfileDialog({
               )}
             </div>
           </TabsContent>
+
+          {/* ── Portal Tab ─────────────────────────────────────────────── */}
+          <TabsContent value="portal" className="mt-0 focus-visible:outline-none">
+            <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+
+              {/* Photos Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-sm uppercase tracking-wider text-foreground">Photos</h3>
+                  <Badge variant="secondary" className="ml-auto text-xs">{photos.length}</Badge>
+                </div>
+
+                {/* Upload Photo */}
+                <div className="bg-muted/30 border border-dashed border-border/60 rounded-xl p-4 space-y-3">
+                  <Input
+                    placeholder="Optional description for photo..."
+                    value={photoDesc}
+                    onChange={(e) => setPhotoDesc(e.target.value)}
+                    className="h-9 rounded-lg bg-background border-border text-sm"
+                  />
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadFile(file, "photo", photoDesc, setUploadingPhoto);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="w-full rounded-lg border-dashed border-primary/40 text-primary hover:bg-primary/5 text-xs"
+                  >
+                    {uploadingPhoto ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <UploadCloud className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    {uploadingPhoto ? "Uploading..." : "Choose Photo (JPG / PNG / WebP)"}
+                  </Button>
+                </div>
+
+                {/* Photo Grid */}
+                {loadingFiles ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1,2,3].map((i) => <Skeleton key={i} className="aspect-square rounded-lg" />)}
+                  </div>
+                ) : photos.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-muted-foreground bg-muted/10 rounded-xl border border-dashed border-border/40">
+                    No photos uploaded yet
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {photos.map((f) => (
+                      <div key={f.id} className="relative group rounded-lg overflow-hidden bg-muted/30 border border-border/40 aspect-square">
+                        <img
+                          src={`${BASE}/api/storage${f.object_path}`}
+                          alt={f.file_name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button className="self-end p-1 rounded-full bg-destructive/80 hover:bg-destructive text-white">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Photo</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Remove "{f.file_name}" from the portal? This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() => deleteFile(f.id, f.file_name)}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          {f.description && (
+                            <p className="text-white text-xs leading-tight line-clamp-2">{f.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-border/50" />
+
+              {/* Documents Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-sm uppercase tracking-wider text-foreground">Compliance Documents</h3>
+                  <Badge variant="secondary" className="ml-auto text-xs">{documents.length}</Badge>
+                </div>
+
+                {/* Upload Doc */}
+                <div className="bg-muted/30 border border-dashed border-border/60 rounded-xl p-4 space-y-3">
+                  <Input
+                    placeholder="Optional description (e.g. VAT registration certificate)..."
+                    value={docDesc}
+                    onChange={(e) => setDocDesc(e.target.value)}
+                    className="h-9 rounded-lg bg-background border-border text-sm"
+                  />
+                  <input
+                    ref={docInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadFile(file, "document", docDesc, setUploadingDoc);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => docInputRef.current?.click()}
+                    disabled={uploadingDoc}
+                    className="w-full rounded-lg border-dashed border-primary/40 text-primary hover:bg-primary/5 text-xs"
+                  >
+                    {uploadingDoc ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <UploadCloud className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    {uploadingDoc ? "Uploading..." : "Choose Document (PDF / DOCX / XLSX)"}
+                  </Button>
+                </div>
+
+                {/* Document List */}
+                {loadingFiles ? (
+                  <div className="space-y-2">
+                    {[1,2].map((i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
+                  </div>
+                ) : documents.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-muted-foreground bg-muted/10 rounded-xl border border-dashed border-border/40">
+                    No compliance documents uploaded yet
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.map((f) => (
+                      <div
+                        key={f.id}
+                        className="flex items-center gap-3 bg-muted/30 border border-border/40 rounded-xl px-4 py-3"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[9px] font-bold text-primary leading-none">
+                            {fileExt(f.file_name)}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{f.file_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {f.description ? `${f.description} · ` : ""}
+                            {formatDate(f.uploaded_at)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <a
+                            href={`${BASE}/api/storage${f.object_path}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            title="Download"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </a>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Document</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Remove "{f.file_name}" from the portal? This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() => deleteFile(f.id, f.file_name)}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/20 border-t border-border/50 flex justify-end">
+              <Button variant="ghost" onClick={onClose} className="rounded-xl">Close</Button>
+            </div>
+          </TabsContent>
+
         </Tabs>
       </DialogContent>
     </Dialog>

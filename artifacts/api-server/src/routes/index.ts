@@ -5,6 +5,7 @@ import clientsRouter from "./clients.js";
 import authRouter from "./auth.js";
 import activityRouter from "./activity.js";
 import notificationsRouter from "./notifications.js";
+import storageRouter from "./storage.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
@@ -16,5 +17,6 @@ router.use(companyRouter);
 router.use(clientsRouter);
 router.use(activityRouter);
 router.use(notificationsRouter);
+router.use(storageRouter);
 
 export default router;

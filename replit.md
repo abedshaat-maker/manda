@@ -12,7 +12,9 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Data storage**: Replit PostgreSQL database (`clients` table) — data persists across restarts and deployments
 - **Companies House proxy**: `GET /api/company/:number` — proxies to `api.company-information.service.gov.uk` using `CH_API_KEY` secret with Basic Auth
 - **Key routes**: `/api/clients`, `/api/stats`, `/api/stats/postmortem`, `/api/proposals`, `/api/clients/export`, `/api/clients/:id/email-preview`, `/api/clients/:id/complete`, `/api/clients/:id/propose`, `/api/clients/:id/accept-proposal`, `/api/clients/:id/reject-proposal`, `/api/activity-log`
-- **DB tables**: `clients`, `users`, `directors`, `activity_log`, `notification_settings`
+- **DB tables**: `clients`, `users`, `directors`, `activity_log`, `notification_settings`, `company_files`
+- **Object Storage**: Replit GCS bucket provisioned (`replit-objstore-1c6b06d5-b7fb-4a3a-b0ab-9c411fae8436`); presigned-URL upload flow; files served at `/api/storage/objects/*`; metadata registered in `company_files` table
+- **Company Portal**: New "Portal" tab in Company Profile dialog — upload photos (JPG/PNG/WebP) and compliance documents (PDF/DOCX/XLSX); photos displayed as image grid; documents shown as file cards with download + delete
 - **New DB columns on `clients`**: `buffer_days` (INTEGER), `linked_deadline_id` (UUID FK→clients), `assignee_timezone` (VARCHAR 64), `extension_count` (INTEGER), `proposed_due_date` (DATE), `proposal_status` (VARCHAR 20), `days_late` (INTEGER)
 
 ### Advanced Features (10 implemented)

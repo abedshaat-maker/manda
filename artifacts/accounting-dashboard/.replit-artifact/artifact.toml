@@ -22,6 +22,11 @@ build = [ "pnpm", "--filter", "@workspace/accounting-dashboard", "run", "build" 
 publicDir = "artifacts/accounting-dashboard/dist/public"
 serve = "static"
 
+[services.production.env]
+PORT = "3000"
+BASE_PATH = "/"
+NODE_ENV = "production"
+
 [[services.production.rewrites]]
 from = "/*"
 to = "/index.html"

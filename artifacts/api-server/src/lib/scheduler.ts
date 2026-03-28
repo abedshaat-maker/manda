@@ -126,16 +126,16 @@ export async function runNotificationCheck(): Promise<{ sent: boolean; count: nu
       ...sections,
       "",
       "─".repeat(55),
-      "Log in to ADM Pro to view and manage all deadlines.",
+      "Log in to Manda London Deadline Manager to view and manage all deadlines.",
     ].join("\n");
 
     const subject = overdue.length > 0
-      ? `🚨 ADM Pro: ${overdue.length} overdue + ${upcoming.length} upcoming deadline${upcoming.length !== 1 ? "s" : ""}`
-      : `📅 ADM Pro: ${upcoming.length} deadline${upcoming.length !== 1 ? "s" : ""} due within ${window} days`;
+      ? `🚨 Manda London: ${overdue.length} overdue + ${upcoming.length} upcoming deadline${upcoming.length !== 1 ? "s" : ""}`
+      : `📅 Manda London: ${upcoming.length} deadline${upcoming.length !== 1 ? "s" : ""} due within ${window} days`;
 
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: `"ADM Pro Notifications" <${process.env.SMTP_USER}>`,
+      from: `"Manda London Deadline Manager" <${process.env.SMTP_USER}>`,
       to: settings.email,
       subject,
       text: bodyText,

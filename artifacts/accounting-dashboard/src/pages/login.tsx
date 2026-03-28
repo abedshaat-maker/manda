@@ -1,6 +1,6 @@
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { TrendingUp, Lock, User, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Lock, User, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,11 +27,12 @@ export default function LoginPage() {
       {/* Left panel — brand */}
       <div className="hidden lg:flex flex-col justify-between w-80 flex-shrink-0 px-10 py-12 border-r border-white/8">
         <div>
-          <div className="flex items-center gap-2.5 mb-12">
-            <div className="w-8 h-8 rounded-md bg-accent flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-white" />
+          <div className="flex items-center gap-3 mb-12">
+            <img src="/manda-logo-nobg.png" alt="Manda London" className="w-10 h-10 flex-shrink-0 object-contain" />
+            <div>
+              <p className="font-display font-bold text-white text-sm leading-tight">Manda London Ltd</p>
+              <p className="text-[9px] text-white/45 uppercase tracking-widest font-bold">Deadline Manager</p>
             </div>
-            <span className="font-display font-bold text-white text-sm">ADM Pro</span>
           </div>
 
           <h2 className="text-white font-display font-bold text-2xl leading-tight mb-3">
@@ -62,10 +63,11 @@ export default function LoginPage() {
 
           <div className="mb-8">
             <div className="flex items-center gap-2.5 mb-6 lg:hidden">
-              <div className="w-7 h-7 rounded-md bg-accent flex items-center justify-center">
-                <TrendingUp className="w-3.5 h-3.5 text-white" />
+              <img src="/manda-logo-nobg.png" alt="Manda London" className="w-8 h-8 object-contain" />
+              <div>
+                <p className="font-display font-bold text-foreground text-sm leading-tight">Manda London Ltd</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">Deadline Manager</p>
               </div>
-              <span className="font-display font-bold text-foreground text-sm">ADM Pro</span>
             </div>
             <h1 className="text-xl font-display font-bold text-foreground tracking-tight">Sign in to your account</h1>
             <p className="text-sm text-muted-foreground mt-1">

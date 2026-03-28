@@ -5,7 +5,6 @@ import {
   PieChart,
   Building,
   LogOut,
-  TrendingUp,
   CalendarDays,
   ListOrdered,
   Activity,
@@ -58,7 +57,7 @@ function getInitials(name: string): string {
 
 export function Sidebar() {
   const [location] = useLocation();
-  const [firmName, setFirmName] = useState("ADM Pro");
+  const [firmName, setFirmName] = useState("Manda London Ltd");
   const [accountantName, setAccountantName] = useState("");
   const { logout, username } = useAuth();
 
@@ -91,14 +90,16 @@ export function Sidebar() {
       <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-white/5 via-white/10 to-white/5" />
 
       {/* Logo / Brand */}
-      <div className="px-5 py-5 border-b border-white/8 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md bg-accent flex items-center justify-center shadow-sm flex-shrink-0">
-            <TrendingUp className="w-3.5 h-3.5 text-white" />
-          </div>
+      <div className="px-5 py-4 border-b border-white/8 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <img
+            src="/manda-logo-nobg.png"
+            alt="Manda London"
+            className="w-9 h-9 flex-shrink-0 object-contain"
+          />
           <div className="min-w-0">
-            <p className="font-display font-bold text-sidebar-foreground text-sm leading-none truncate">{firmName}</p>
-            <p className="text-[10px] text-sidebar-foreground/40 mt-0.5 tracking-wide uppercase font-medium">Deadline Manager</p>
+            <p className="font-display font-bold text-sidebar-foreground text-sm leading-tight truncate">Manda London Ltd</p>
+            <p className="text-[9px] text-sidebar-foreground/50 tracking-widest uppercase font-bold mt-0.5">Deadline Manager</p>
           </div>
         </div>
       </div>

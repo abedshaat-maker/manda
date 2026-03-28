@@ -370,3 +370,20 @@ export async function hasActivityLoggedToday(
     return false;
   }
 }
+
+/** Returns true if this action+entityName has EVER been logged (not just today).
+ *  Used to track one-time milestone reminders (14-day, 7-day) per deadline. */
+export async function hasReminderBeenSent(
+  action: string,
+  entityName: string
+): Promise<boolean> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM activity_log WHERE action = $1 AND entity_name = $2 LIMIT 1`,
+      [action, entityName]
+    );
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}

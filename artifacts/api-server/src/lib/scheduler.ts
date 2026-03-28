@@ -9,6 +9,7 @@ import {
   hasActivityLoggedToday,
 } from "./dataStore.js";
 import { logger } from "./logger.js";
+import { getLogoAttachment, buildEmailHtml } from "./emailTemplate.js";
 
 function createTransporter() {
   return nodemailer.createTransport({
@@ -133,12 +134,68 @@ export async function runNotificationCheck(): Promise<{ sent: boolean; count: nu
       ? `🚨 Manda London: ${overdue.length} overdue + ${upcoming.length} upcoming deadline${upcoming.length !== 1 ? "s" : ""}`
       : `📅 Manda London: ${upcoming.length} deadline${upcoming.length !== 1 ? "s" : ""} due within ${window} days`;
 
+    const logoAttachment = await getLogoAttachment();
+
+    // Build HTML version of the digest
+    const overdueHtml = overdue.map((c) => {
+      const days = Math.abs(computeDaysLeft(c.dueDate));
+      return `<tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;">
+          <span style="color:#c0392b;font-weight:700;">⚠ OVERDUE</span>
+          &nbsp;·&nbsp; <strong>${c.clientName}</strong> — ${c.deadlineType}
+          <br /><span style="color:#888;font-size:13px;">${c.companyName} &nbsp;·&nbsp; Was due: ${fmtDate(c.dueDate)} &nbsp;·&nbsp; ${days} day${days === 1 ? "" : "s"} overdue</span>
+        </td>
+      </tr>`;
+    }).join("");
+
+    const upcomingHtml = upcoming.map((c) => {
+      const days = computeDaysLeft(c.dueDate);
+      const daysLabel = days === 0 ? "<strong>TODAY</strong>" : `${days} day${days === 1 ? "" : "s"} left`;
+      return `<tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #f0f0f0;">
+          <span style="color:#1a6fb5;font-weight:700;">📅 UPCOMING</span>
+          &nbsp;·&nbsp; <strong>${c.clientName}</strong> — ${c.deadlineType}
+          <br /><span style="color:#888;font-size:13px;">${c.companyName} &nbsp;·&nbsp; Due: ${fmtDate(c.dueDate)} &nbsp;·&nbsp; ${daysLabel}</span>
+        </td>
+      </tr>`;
+    }).join("");
+
+    const dateHeading = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+    let digestHtml = `<p style="margin:0 0 20px;font-size:16px;color:#555;">Deadline notification for <strong>${dateHeading}</strong>.</p>`;
+
+    if (overdueHtml) {
+      digestHtml += `
+        <p style="margin:0 0 6px;font-weight:700;color:#c0392b;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;">
+          Overdue (${overdue.length})
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #fde;border-radius:6px;margin-bottom:20px;background:#fff8f8;">
+          ${overdueHtml}
+        </table>`;
+    }
+
+    if (upcomingHtml) {
+      digestHtml += `
+        <p style="margin:0 0 6px;font-weight:700;color:#1a6fb5;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;">
+          Upcoming within ${window} days (${upcoming.length})
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #d8eaf8;border-radius:6px;margin-bottom:20px;background:#f5f9fe;">
+          ${upcomingHtml}
+        </table>`;
+    }
+
+    digestHtml += `<p style="margin:16px 0 0;color:#888;font-size:13px;">Log in to Manda London Deadline Manager to view and manage all deadlines.</p>`;
+
+    const htmlBody = buildEmailHtml(digestHtml, !!logoAttachment);
+
     const transporter = createTransporter();
     await transporter.sendMail({
       from: `"Manda London Deadline Manager" <${process.env.SMTP_USER}>`,
       to: settings.email,
       subject,
       text: bodyText,
+      html: htmlBody,
+      attachments: logoAttachment ? [logoAttachment] : [],
     });
 
     await markNotificationSent(today);

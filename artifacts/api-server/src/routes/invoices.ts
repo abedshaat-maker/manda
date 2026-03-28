@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import pg from "pg";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
+import { getLogoAttachment, buildEmailHtml } from "../lib/emailTemplate.js";
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -409,23 +410,51 @@ router.post("/invoices/:id/send", async (req: Request, res: Response) => {
       items: inv.items,
     });
 
+    const logoAttachment = await getLogoAttachment();
+    const dueStr = fmtDate(inv.due_date.toISOString?.() ?? inv.due_date);
+    const textBody = [
+      `Dear ${inv.client_name},`,
+      "",
+      `Please find attached invoice ${inv.invoice_number} for £${grand.toFixed(2)} (inc. VAT).`,
+      `Payment is due by ${dueStr}.`,
+      inv.notes ? `\nNotes: ${inv.notes}` : "",
+      "",
+      "Thank you for your business.",
+      "Manda London Ltd",
+    ].filter((l) => l !== undefined).join("\n");
+
+    const invoiceHtml = buildEmailHtml(`
+      <p style="margin:0 0 16px;">Dear <strong>${inv.client_name}</strong>,</p>
+      <p style="margin:0 0 16px;">Please find attached invoice <strong>${inv.invoice_number}</strong> for <strong>£${grand.toFixed(2)}</strong> (inc. VAT).</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;margin-bottom:20px;overflow:hidden;">
+        <tr style="background:#0d1b3e;color:#fff;">
+          <td style="padding:10px 16px;font-weight:700;">Invoice Number</td>
+          <td style="padding:10px 16px;">${inv.invoice_number}</td>
+        </tr>
+        <tr style="background:#f9fafb;">
+          <td style="padding:10px 16px;font-weight:700;color:#374151;">Amount Due</td>
+          <td style="padding:10px 16px;color:#374151;font-weight:700;">£${grand.toFixed(2)} (inc. VAT)</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 16px;font-weight:700;color:#374151;">Payment Due</td>
+          <td style="padding:10px 16px;color:#c0392b;font-weight:700;">${dueStr}</td>
+        </tr>
+      </table>
+      ${inv.notes ? `<p style="margin:0 0 16px;color:#555;font-size:14px;"><strong>Notes:</strong> ${inv.notes}</p>` : ""}
+      <p style="margin:0;">Thank you for your business. The invoice PDF is attached to this email.</p>
+    `, !!logoAttachment);
+
     const transporter = createTransporter();
     await transporter.sendMail({
       from: `"Manda London Ltd" <${process.env.SMTP_USER}>`,
       to: inv.client_email,
-      subject: `Invoice ${inv.invoice_number} from Manda London Ltd — £${grand.toFixed(2)} due ${fmtDate(inv.due_date.toISOString?.() ?? inv.due_date)}`,
-      text: [
-        `Dear ${inv.client_name},`,
-        "",
-        `Please find attached invoice ${inv.invoice_number} for £${grand.toFixed(2)} (inc. VAT).`,
-        `Payment is due by ${fmtDate(inv.due_date.toISOString?.() ?? inv.due_date)}.`,
-        "",
-        inv.notes ? `Notes: ${inv.notes}` : "",
-        "",
-        "Thank you for your business.",
-        "Manda London Ltd",
-      ].filter((l) => l !== undefined).join("\n"),
-      attachments: [{ filename: `${inv.invoice_number}.pdf`, content: pdf, contentType: "application/pdf" }],
+      subject: `Invoice ${inv.invoice_number} from Manda London Ltd — £${grand.toFixed(2)} due ${dueStr}`,
+      text: textBody,
+      html: invoiceHtml,
+      attachments: [
+        { filename: `${inv.invoice_number}.pdf`, content: pdf, contentType: "application/pdf" },
+        ...(logoAttachment ? [logoAttachment] : []),
+      ],
     });
 
     // Mark as sent

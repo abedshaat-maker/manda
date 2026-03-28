@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import nodemailer from "nodemailer";
+import { getLogoAttachment, buildEmailHtml, textToHtml } from "../lib/emailTemplate.js";
 import {
   loadClients,
   createClient,
@@ -405,12 +406,17 @@ router.post("/clients/:id/send-email", async (req, res) => {
       return;
     }
 
+    const logoAttachment = await getLogoAttachment();
+    const htmlBody = buildEmailHtml(textToHtml(body), !!logoAttachment);
+
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || "Accounting Team"}" <${process.env.SMTP_USER}>`,
+      from: `"${process.env.SMTP_FROM_NAME || "Manda London Ltd"}" <${process.env.SMTP_USER}>`,
       to,
       subject,
       text: body,
+      html: htmlBody,
+      attachments: logoAttachment ? [logoAttachment] : [],
     });
 
     await logActivity(

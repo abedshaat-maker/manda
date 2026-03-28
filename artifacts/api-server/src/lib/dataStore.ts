@@ -32,6 +32,8 @@ export interface Client {
   proposalStatus: "pending" | "accepted" | "rejected" | null;
   // Feature 10: Post-Mortem Analysis
   daysLate: number | null;
+  // Archive
+  isArchived: boolean;
 }
 
 export interface ActivityLogEntry {
@@ -65,6 +67,7 @@ function rowToClient(row: Record<string, unknown>): Client {
       : null,
     proposalStatus: (row.proposal_status as "pending" | "accepted" | "rejected" | null) ?? null,
     daysLate: (row.days_late as number | null) ?? null,
+    isArchived: (row.is_archived as boolean) ?? false,
   };
 }
 
@@ -118,6 +121,7 @@ export async function initDb(): Promise<void> {
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS proposed_due_date DATE`);
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS proposal_status VARCHAR(20)`);
   await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS days_late INTEGER`);
+  await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_archived BOOLEAN NOT NULL DEFAULT FALSE`);
 }
 
 export async function getNotificationSettings(): Promise<NotificationSettings> {
@@ -154,9 +158,19 @@ export async function markNotificationSent(date: string): Promise<void> {
   await pool.query(`UPDATE notification_settings SET last_sent_date = $1 WHERE id = 1`, [date]);
 }
 
-export async function loadClients(): Promise<Client[]> {
-  const { rows } = await pool.query(`SELECT * FROM clients ORDER BY due_date ASC`);
+export async function loadClients(includeArchived = true): Promise<Client[]> {
+  const { rows } = includeArchived
+    ? await pool.query(`SELECT * FROM clients ORDER BY due_date ASC`)
+    : await pool.query(`SELECT * FROM clients WHERE is_archived = FALSE ORDER BY due_date ASC`);
   return rows.map(rowToClient);
+}
+
+export async function archiveCompany(companyNumber: string, archived: boolean): Promise<number> {
+  const { rowCount } = await pool.query(
+    `UPDATE clients SET is_archived = $1, updated_at = NOW() WHERE company_number = $2`,
+    [archived, companyNumber]
+  );
+  return rowCount ?? 0;
 }
 
 export async function createClient(
@@ -241,6 +255,7 @@ export async function autoUpdateStatuses(): Promise<void> {
     END,
     updated_at = NOW()
     WHERE status != 'completed'
+      AND is_archived = FALSE
       AND (
         (due_date < CURRENT_DATE AND status != 'overdue')
         OR (due_date >= CURRENT_DATE AND status = 'overdue')

@@ -59,7 +59,7 @@ router.get("/clients/export", async (_req, res) => {
 router.get("/stats", async (_req, res) => {
   try {
     await autoUpdateStatuses();
-    const clients = await loadClients();
+    const clients = await loadClients(false);
 
     let overdue = 0;
     let dueSoon = 0;

@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import {
   Search, Download, CheckCircle2, Mail, Trash2, ArrowUpDown, Undo2,
   UserSearch, ExternalLink, AlertTriangle, Clock, Flame, CalendarClock, Pencil, BookOpen,
+  Archive, ArchiveRestore,
 } from "lucide-react";
 import { useListClients, useExportClients, Client, customFetch } from "@workspace/api-client-react";
 import { useClientMutations } from "@/hooks/use-clients";
@@ -38,6 +39,7 @@ interface ClientGroup {
   companyNumber: string;
   companyName: string;
   deadlines: Client[];
+  isArchived: boolean;
 }
 
 const StatusBadge = ({ client }: { client: Client }) => {
@@ -162,6 +164,27 @@ export function ClientTable() {
   const [proposeClient, setProposeClient] = useState<Client | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [editTarget, setEditTarget] = useState<Client | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const { toast } = useToast();
+
+  const archiveGroup = async (companyNumber: string, archive: boolean) => {
+    try {
+      await customFetch(`/api/company/${companyNumber}/archive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: archive }),
+      });
+      queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+      toast({
+        title: archive ? "Company archived" : "Company restored",
+        description: archive
+          ? "This company is now marked as no longer a client. Records are preserved."
+          : "Company restored to active client list.",
+      });
+    } catch {
+      toast({ title: "Error", description: "Could not update archive status.", variant: "destructive" });
+    }
+  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -182,6 +205,7 @@ export function ClientTable() {
   const groupedClients = useMemo<ClientGroup[]>(() => {
     if (!clients) return [];
     const filtered = clients.filter((c) => {
+      if (!showArchived && c.isArchived) return false;
       const matchSearch =
         c.clientName.toLowerCase().includes(search.toLowerCase()) ||
         c.companyNumber.includes(search) ||
@@ -197,17 +221,23 @@ export function ClientTable() {
       map.get(key)!.push(c);
     }
     return Array.from(map.entries())
-      .map(([key, deadlines]) => ({
-        key,
-        clientName: deadlines[0].clientName,
-        companyNumber: deadlines[0].companyNumber,
-        companyName: deadlines[0].companyName,
-        deadlines: [...deadlines].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()),
-      }))
-      .sort((a, b) =>
-        new Date(a.deadlines[0].dueDate).getTime() - new Date(b.deadlines[0].dueDate).getTime()
-      );
-  }, [clients, search, filter]);
+      .map(([key, deadlines]) => {
+        const sorted = [...deadlines].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+        const isArchived = sorted.every((d) => d.isArchived === true);
+        return {
+          key,
+          clientName: sorted[0].clientName,
+          companyNumber: sorted[0].companyNumber,
+          companyName: sorted[0].companyName,
+          deadlines: sorted,
+          isArchived,
+        };
+      })
+      .sort((a, b) => {
+        if (a.isArchived !== b.isArchived) return a.isArchived ? 1 : -1;
+        return new Date(a.deadlines[0].dueDate).getTime() - new Date(b.deadlines[0].dueDate).getTime();
+      });
+  }, [clients, search, filter, showArchived]);
 
   const DeadlineActions = ({ client }: { client: Client }) => (
     <div className="flex items-center justify-end gap-1">
@@ -282,6 +312,16 @@ export function ClientTable() {
               {f.replace("_", " ")}
             </Button>
           ))}
+          <div className="h-4 w-px bg-border/50 mx-1" />
+          <Button
+            variant={showArchived ? "default" : "secondary"}
+            size="sm"
+            onClick={() => setShowArchived(!showArchived)}
+            className={`rounded-full ${showArchived ? "shadow-md shadow-primary/20" : "bg-muted/50 hover:bg-muted"}`}
+          >
+            <Archive className="w-3 h-3 mr-1.5" />
+            Archived
+          </Button>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
@@ -340,10 +380,19 @@ export function ClientTable() {
                     const localDate = getLocalDueDate(client.dueDate, client.assigneeTimezone);
                     const isBurning = (client.extensionCount ?? 0) >= 3;
 
+                    const groupIsArchived = group.isArchived;
+                    const groupDotColor = groupIsArchived
+                      ? "bg-slate-400/40"
+                      : group.deadlines.some((d) => getComputedStatus(d) === "overdue")
+                      ? "bg-destructive"
+                      : group.deadlines.every((d) => d.status === "completed")
+                      ? "bg-emerald-500"
+                      : "bg-blue-400";
+
                     return (
                       <tr
                         key={client.id}
-                        className={`hover:bg-muted/30 transition-colors group ${hasMultiple && !isLast ? "border-b-0" : ""} ${hasMultiple && !isFirst ? "bg-muted/10" : ""}`}
+                        className={`hover:bg-muted/30 transition-colors group ${hasMultiple && !isLast ? "border-b-0" : ""} ${hasMultiple && !isFirst ? "bg-muted/10" : ""} ${groupIsArchived ? "opacity-55" : ""}`}
                       >
                         {/* Client name */}
                         <td className="px-6 py-3">
@@ -351,8 +400,9 @@ export function ClientTable() {
                             const isSE = group.companyNumber.startsWith("SE-");
                             return (
                               <div className="flex items-start gap-2">
+                                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 ${groupDotColor}`} />
                                 <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-foreground">{group.clientName}</div>
+                                  <div className={`font-semibold ${groupIsArchived ? "text-muted-foreground line-through" : "text-foreground"}`}>{group.clientName}</div>
                                   {isSE ? (
                                     <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 mt-0.5">Self Employed</span>
                                   ) : group.companyName !== group.clientName ? (
@@ -391,6 +441,19 @@ export function ClientTable() {
                                       <TooltipContent>Company Reference Profile</TooltipContent>
                                     </Tooltip>
                                   )}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => archiveGroup(group.companyNumber, !groupIsArchived)}
+                                        className={`h-7 w-7 ${groupIsArchived ? "text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-600" : "text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"}`}
+                                      >
+                                        {groupIsArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{groupIsArchived ? "Restore to active clients" : "Mark as no longer a client"}</TooltipContent>
+                                  </Tooltip>
                                 </div>
                               </div>
                             );

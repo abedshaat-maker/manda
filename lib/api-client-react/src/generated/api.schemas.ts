@@ -22,6 +22,8 @@ export interface CompanyLookupResult {
   confirmationStatementDueDate?: string | null;
   vatReturnDueDate?: string | null;
   selfAssessmentDueDate?: string | null;
+  registeredAddress?: string | null;
+  sicCodes?: string | null;
 }
 
 export type ClientStatus = (typeof ClientStatus)[keyof typeof ClientStatus];
@@ -65,6 +67,8 @@ export interface Client {
   proposalStatus?: ProposalStatus | null;
   // Feature 10: Post-Mortem Analysis
   daysLate?: number | null;
+  // Archive
+  isArchived?: boolean;
 }
 
 export type CreateClientRequestStatus =

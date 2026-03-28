@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import pg from "pg";
+import { archiveCompany, logActivity } from "../lib/dataStore.js";
 
 const { Pool } = pg;
 const pool = new Pool({
@@ -118,6 +119,15 @@ router.get("/company/:number", async (req, res) => {
         next_due?: string;
         next_made_up_to?: string;
       };
+      registered_office_address?: {
+        address_line_1?: string;
+        address_line_2?: string;
+        locality?: string;
+        region?: string;
+        postal_code?: string;
+        country?: string;
+      };
+      sic_codes?: string[];
     };
 
     let accountsDue: string | null = null;
@@ -144,6 +154,14 @@ router.get("/company/:number", async (req, res) => {
       selfAssessmentDue = addMonths(new Date().getFullYear() + "-01-31", 0);
     }
 
+    const addr = profile.registered_office_address;
+    const registeredAddress = addr
+      ? [addr.address_line_1, addr.address_line_2, addr.locality, addr.region, addr.postal_code, addr.country]
+          .filter(Boolean).join(", ")
+      : null;
+
+    const sicCodes = (profile.sic_codes ?? []).join("; ") || null;
+
     res.json({
       companyNumber: profile.company_number,
       companyName: profile.company_name,
@@ -153,6 +171,8 @@ router.get("/company/:number", async (req, res) => {
       confirmationStatementDueDate: confirmationDue,
       vatReturnDueDate: vatDue,
       selfAssessmentDueDate: selfAssessmentDue,
+      registeredAddress,
+      sicCodes,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch from Companies House");
@@ -272,6 +292,29 @@ router.post("/company/:number/files", async (req, res) => {
   } catch (err) {
     console.error("File register error:", err);
     res.status(500).json({ error: "Failed to register file" });
+  }
+});
+
+// PATCH /api/company/:number/archive
+router.patch("/company/:number/archive", async (req, res) => {
+  const { number } = req.params;
+  const { archived } = req.body as { archived: boolean };
+  if (typeof archived !== "boolean") {
+    res.status(400).json({ error: "archived must be a boolean" });
+    return;
+  }
+  try {
+    const count = await archiveCompany(number, archived);
+    await logActivity(
+      archived ? "company_archived" : "company_unarchived",
+      "company",
+      number,
+      `${count} deadline(s) ${archived ? "archived" : "unarchived"}`
+    );
+    res.json({ success: true, updated: count });
+  } catch (err) {
+    console.error("Archive company error:", err);
+    res.status(500).json({ error: "Failed to archive company" });
   }
 });
 

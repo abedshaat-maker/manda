@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import {
   ArrowLeft, Pencil, Save, X, Eye, EyeOff, Copy, Loader2,
   Building2, ShieldCheck, CreditCard, Briefcase, StickyNote,
-  LandmarkIcon, FileText, ChevronRight, AlertTriangle, CheckCircle2, Clock,
+  LandmarkIcon, FileText, ChevronRight, AlertTriangle, CheckCircle2, Clock, ExternalLink,
 } from "lucide-react";
 import { customFetch, useListClients } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -314,6 +314,8 @@ export default function CompanyProfilePage() {
       if (chData?.incorporatedOn) prefill.incorporation_date = chData.incorporatedOn;
       if (chData?.confirmationStatementDueDate)
         prefill.confirmation_stmt_due = chData.confirmationStatementDueDate;
+      if (chData?.registeredAddress) prefill.registered_address = chData.registeredAddress;
+      if (chData?.sicCodes) prefill.sic_code = chData.sicCodes;
     } catch {}
 
     try {
@@ -557,6 +559,18 @@ export default function CompanyProfilePage() {
             <ProfileSection icon={ShieldCheck} title="Identity & Verification">
               <F ctx={ctx as any} label="National Insurance Number" field="nino" placeholder="AB 12 34 56 C" />
               <F ctx={ctx as any} label="Share Code (Right to Work)" field="share_code" placeholder="9-character code" />
+              <div className="sm:col-span-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50/60 border border-blue-100 text-xs text-blue-700">
+                <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0 text-blue-500" />
+                <span>Share codes are 9 characters (e.g. W4B3FKVB6). To verify a share code with the Home Office:</span>
+                <a
+                  href="https://www.gov.uk/view-right-to-work"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 underline decoration-dotted underline-offset-2 flex-shrink-0"
+                >
+                  gov.uk verify <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
               <F ctx={ctx as any} label="Passport Number" field="passport_number" placeholder="Passport number" />
               <F ctx={ctx as any} label="Passport Expiry" field="passport_expiry" type="date" />
               <F ctx={ctx as any} label="Date of Birth" field="date_of_birth" type="date" />

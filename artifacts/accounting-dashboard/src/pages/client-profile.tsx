@@ -15,7 +15,7 @@ function useDirectors(companyNumber: string | undefined) {
     queryFn: async () => {
       if (!companyNumber || companyNumber.startsWith("SE-")) return [];
       const res = await customFetch<any>(`/api/company/${companyNumber}/directors`, { method: "GET" });
-      return res ?? [];
+      return Array.isArray(res) ? res : (res?.directors ?? []);
     },
     enabled: !!companyNumber && !companyNumber.startsWith("SE-"),
   });

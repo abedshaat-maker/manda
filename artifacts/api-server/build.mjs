@@ -3,17 +3,21 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp } from "node:fs/promises";
+import { execSync } from "node:child_process";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(artifactDir, "..", "..");
+const dashboardDir = path.resolve(workspaceRoot, "artifacts", "accounting-dashboard");
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
 
+  // Step 1: Build the API server
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
     platform: "node",
@@ -22,11 +26,6 @@ async function buildAll() {
     outdir: distDir,
     outExtension: { ".js": ".mjs" },
     logLevel: "info",
-    // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
-    // Some of the packages below may not be imported or installed, but we're adding them in case they are in the future.
-    // Examples of unbundleable packages:
-    // - uses native modules and loads them dynamically (e.g. sharp)
-    // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
       "*.node",
       "sharp",
@@ -105,10 +104,8 @@ async function buildAll() {
     ],
     sourcemap: "linked",
     plugins: [
-      // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
       esbuildPluginPino({ transports: ["pino-pretty"] })
     ],
-    // Make sure packages that are cjs only (e.g. express) but are bundled continue to work in our esm output file
     banner: {
       js: `import { createRequire as __bannerCrReq } from 'node:module';
 import __bannerPath from 'node:path';
@@ -120,6 +117,35 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  // Step 2: Build the frontend (accounting-dashboard)
+  console.log("\n--- Building frontend (accounting-dashboard) ---");
+  execSync("pnpm --filter @workspace/accounting-dashboard run build", {
+    cwd: workspaceRoot,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      PORT: "3000",
+      BASE_PATH: "/",
+      NODE_ENV: "production",
+    },
+  });
+
+  // Step 3: Copy frontend build output into api-server dist/public
+  const frontendDist = path.resolve(dashboardDir, "dist", "public");
+  const targetPublic = path.resolve(distDir, "public");
+  console.log(`\n--- Copying frontend from ${frontendDist} → ${targetPublic} ---`);
+  await cp(frontendDist, targetPublic, { recursive: true });
+
+  // Step 4: Copy the manda logo (public asset) into dist/public
+  const logoSrc = path.resolve(dashboardDir, "public", "manda-logo-nobg.png");
+  try {
+    await cp(logoSrc, path.resolve(targetPublic, "manda-logo-nobg.png"));
+  } catch {
+    // logo may not exist — not fatal
+  }
+
+  console.log("\n--- Build complete ---");
 }
 
 buildAll().catch((err) => {

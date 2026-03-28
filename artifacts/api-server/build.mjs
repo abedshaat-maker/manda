@@ -145,6 +145,22 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     // logo may not exist — not fatal
   }
 
+  // Step 5: Create a CDN-safe assets directory (NO index.html — only hashed assets)
+  // The static CDN only serves these immutable hashed files. index.html is NEVER
+  // in this directory so the CDN can never cache it — the api-server always serves
+  // index.html fresh with no-cache headers.
+  const cdnAssetsDir = path.resolve(distDir, "cdn-assets");
+  const frontendAssets = path.resolve(frontendDist, "assets");
+  console.log(`\n--- Creating CDN assets dir (no index.html) at ${cdnAssetsDir} ---`);
+  await cp(frontendAssets, path.resolve(cdnAssetsDir, "assets"), { recursive: true });
+
+  // Also copy logo into CDN dir so it can be served via CDN
+  try {
+    await cp(logoSrc, path.resolve(cdnAssetsDir, "manda-logo-nobg.png"));
+  } catch {
+    // not fatal
+  }
+
   console.log("\n--- Build complete ---");
 }
 

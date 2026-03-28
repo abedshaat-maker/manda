@@ -35,7 +35,19 @@ app.use("/api", router);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
 
-// Hashed assets — cache for 1 year (content-addressable)
+// index.html must NEVER be cached — always serve fresh so the browser
+// picks up new JS/CSS hashes on each deployment.
+const serveIndexHtml = (_req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.sendFile(path.join(publicDir, "index.html"));
+};
+
+// Intercept index.html requests before express.static can handle them
+app.get("/index.html", serveIndexHtml);
+
+// Hashed assets — cache for 1 year (content-addressable, immutable)
 app.use(
   "/assets",
   express.static(path.join(publicDir, "assets"), {
@@ -44,16 +56,16 @@ app.use(
   }),
 );
 
-// Everything else in public (favicon, logo, etc.) — short cache
-app.use(express.static(publicDir, { maxAge: "1h" }));
+// Everything else in public (favicon, logo, etc.) — short cache, no index.html
+app.use(
+  express.static(publicDir, {
+    maxAge: "1h",
+    index: false, // Do NOT auto-serve index.html — our route handles it
+  }),
+);
 
-// SPA fallback — serve index.html with no-cache so browser always gets latest
-app.get("/{*any}", (_req: Request, res: Response) => {
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Pragma", "no-cache");
-  res.setHeader("Expires", "0");
-  res.sendFile(path.join(publicDir, "index.html"));
-});
+// SPA fallback — any unknown route returns index.html with no-cache
+app.get("/{*any}", serveIndexHtml);
 
 initDb()
   .then(() => startScheduler())

@@ -18,7 +18,7 @@ localPort = 24880
 run = "pnpm --filter @workspace/accounting-dashboard run dev"
 
 [services.production]
-publicDir = "artifacts/accounting-dashboard/dist/empty"
+publicDir = "artifacts/api-server/dist/cdn-assets"
 serve = "static"
 
 [services.env]

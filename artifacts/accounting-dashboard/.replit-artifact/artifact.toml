@@ -17,6 +17,15 @@ localPort = 24880
 [services.development]
 run = "pnpm --filter @workspace/accounting-dashboard run dev"
 
+[services.production]
+build = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
+run = ["pnpm", "--filter", "@workspace/api-server", "run", "start"]
+
+[services.production.env]
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/api/healthz"
+
 [services.env]
-PORT = "24880"
 BASE_PATH = "/"

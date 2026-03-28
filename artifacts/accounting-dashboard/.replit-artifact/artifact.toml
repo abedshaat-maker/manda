@@ -17,14 +17,6 @@ localPort = 24880
 [services.development]
 run = "pnpm --filter @workspace/accounting-dashboard run dev"
 
-[services.production]
-publicDir = "artifacts/api-server/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
-
 [services.env]
 PORT = "24880"
 BASE_PATH = "/"

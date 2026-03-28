@@ -11,6 +11,7 @@ import {
   Zap,
   GitPullRequest,
   ClipboardList,
+  Receipt,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
@@ -40,6 +41,7 @@ const NAV_SECTIONS = [
     links: [
       { icon: Users, label: "Clients", href: "/clients" },
       { icon: Building, label: "Companies", href: "/companies" },
+      { icon: Receipt, label: "Invoices", href: "/invoices" },
       { icon: GitPullRequest, label: "Proposals", href: "/proposals" },
       { icon: Settings, label: "Settings", href: "/settings" },
     ],

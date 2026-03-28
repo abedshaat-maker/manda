@@ -17,6 +17,7 @@ import AuditPage from "@/pages/audit";
 import ProposalsPage from "@/pages/proposals";
 import PostmortemPage from "@/pages/postmortem";
 import CompanyProfilePage from "@/pages/company-profile-page";
+import InvoicesPage from "@/pages/invoices";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/clients/:companyNumber" component={ClientProfilePage} />
       <Route path="/companies" component={CompaniesPage} />
       <Route path="/companies/:company_number/profile" component={CompanyProfilePage} />
+      <Route path="/invoices" component={InvoicesPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

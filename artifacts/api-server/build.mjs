@@ -49,6 +49,7 @@ async function buildAll() {
       "oracledb",
       "mongodb-client-encryption",
       "nodemailer",
+      "openai",
       "pdfkit",
       "fontkit",
       "handlebars",

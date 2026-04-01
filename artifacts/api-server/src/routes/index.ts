@@ -8,6 +8,7 @@ import notificationsRouter from "./notifications.js";
 import storageRouter from "./storage.js";
 import companyProfilesRouter from "./companyProfiles.js";
 import invoicesRouter from "./invoices.js";
+import announcementsRouter from "./announcements.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
@@ -22,5 +23,6 @@ router.use(notificationsRouter);
 router.use(storageRouter);
 router.use(companyProfilesRouter);
 router.use(invoicesRouter);
+router.use(announcementsRouter);
 
 export default router;

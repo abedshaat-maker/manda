@@ -10,10 +10,15 @@ const { Pool } = pg;
 const router: IRouter = Router();
 
 function getOpenAI() {
-  return new OpenAI({
-    baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-    apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  });
+  // Replit environment: uses AI_INTEGRATIONS proxy (no billing needed)
+  // Render / other: uses standard OPENAI_API_KEY
+  const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || undefined;
+  const apiKey =
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ||
+    process.env.OPENAI_API_KEY ||
+    "missing";
+
+  return new OpenAI({ baseURL, apiKey });
 }
 
 function createTransporter() {

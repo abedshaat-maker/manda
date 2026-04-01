@@ -78,8 +78,9 @@ Return your response as JSON with exactly two fields:
 Return only valid JSON, nothing else.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o-mini",
       max_completion_tokens: 1024,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -87,17 +88,25 @@ Return only valid JSON, nothing else.`;
     });
 
     const raw = completion.choices[0]?.message?.content ?? "";
+    console.log("[announcements] raw AI response:", raw.substring(0, 300));
 
     let parsed: { subject: string; body: string };
     try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
-    } catch {
+      // Strip markdown code fences if present, then parse
+      const cleaned = raw
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "")
+        .trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+    } catch (parseErr) {
+      console.error("[announcements] JSON parse error. Raw:", raw);
       res.status(500).json({ error: "AI returned an unexpected format. Please try again." });
       return;
     }
 
     if (!parsed.subject || !parsed.body) {
+      console.error("[announcements] Missing fields. Parsed:", parsed);
       res.status(500).json({ error: "AI response was incomplete. Please try again." });
       return;
     }
